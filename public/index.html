@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>成就卡申请表</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Achievement Card</p>
+        <h1>成就卡申请表</h1>
+      </div>
+      <a class="admin-link" href="./admin.html">评审入口</a>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <h2>一、申报项目</h2>
+        <label class="field">
+          <span>申报成就卡项目 <b>*</b></span>
+          <select id="cardType" name="cardType" required>
+            <option value="">请选择</option>
+            <option>奋斗者</option>
+            <option>分享达人</option>
+            <option>业绩之王</option>
+            <option>文化先锋</option>
+            <option>最美工位</option>
+          </select>
+        </label>
+
+        <article id="cardInfo" class="card-info is-empty">
+          <p>请选择要申请的成就卡，系统会显示对应的项目说明、周期、分值和材料要求。</p>
+        </article>
+      </section>
+
+      <form id="applicationForm" class="panel form-panel">
+        <h2>二、基础信息</h2>
+        <div class="grid">
+          <label class="field">
+            <span>申报人姓名 <b>*</b></span>
+            <input name="applicantName" autocomplete="name" required />
+          </label>
+          <label class="field">
+            <span>所属部门 <b>*</b></span>
+            <input name="department" required />
+          </label>
+          <label class="field">
+            <span>岗位 <b>*</b></span>
+            <input name="position" required />
+          </label>
+          <label class="field">
+            <span>联系方式</span>
+            <input name="contact" autocomplete="tel" />
+          </label>
+          <label class="field">
+            <span>申报日期 <b>*</b></span>
+            <input type="date" name="applicationDate" required />
+          </label>
+        </div>
+
+        <h2>三、申报内容</h2>
+        <label class="field">
+          <span>文字说明 <b>*</b></span>
+          <textarea name="description" rows="7" required placeholder="请填写申请原因、具体事项、发生时间、过程、结果或影响。"></textarea>
+        </label>
+        <label class="field">
+          <span>材料上传 <b>*</b></span>
+          <input type="file" name="attachments" multiple required />
+          <small>附件内容不限，可上传文件、图片、截图、文档、表格、PDF、压缩包等，单个文件最大 50MB，最多 10 个。</small>
+        </label>
+
+        <h2>四、提交确认</h2>
+        <label class="checkline">
+          <input type="checkbox" name="commitment" value="我确认" required />
+          <span>本人承诺以上申报内容真实有效</span>
+        </label>
+
+        <div class="actions">
+          <button type="submit">提交申请</button>
+          <p id="message" class="message" role="status"></p>
+        </div>
+      </form>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
