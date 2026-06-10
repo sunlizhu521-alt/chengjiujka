@@ -7,9 +7,10 @@ const multer = require("multer");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "chengjiuka-admin";
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 
 const rootDir = __dirname;
-const publicDir = path.join(rootDir, "public");
+const publicDir = path.join(rootDir, "docs");
 const dataDir = path.join(rootDir, "data");
 const uploadDir = path.join(rootDir, "uploads");
 const submissionsFile = path.join(dataDir, "submissions.json");
@@ -20,6 +21,20 @@ fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(submissionsFile)) {
   fs.writeFileSync(submissionsFile, "[]", "utf8");
 }
+
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  if (origin) {
+    res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN === "*" ? origin : ALLOWED_ORIGIN);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-token");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(express.static(publicDir));
@@ -49,7 +64,8 @@ const cardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化�
 const reviewStatuses = new Set(["待评审", "通过", "驳回", "需补充"]);
 
 function readSubmissions() {
-  return JSON.parse(fs.readFileSync(submissionsFile, "utf8"));
+  const content = fs.readFileSync(submissionsFile, "utf8").replace(/^\uFEFF/, "");
+  return JSON.parse(content || "[]");
 }
 
 function writeSubmissions(records) {

@@ -88,6 +88,8 @@ const cardInfo = document.querySelector("#cardInfo");
 const form = document.querySelector("#applicationForm");
 const message = document.querySelector("#message");
 const dateInput = form.querySelector('input[name="applicationDate"]');
+const configuredApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
+const isGithubPages = window.location.hostname.endsWith("github.io");
 
 dateInput.valueAsDate = new Date();
 
@@ -132,6 +134,14 @@ function setMessage(text, type) {
   message.className = `message ${type || ""}`;
 }
 
+function hasBackend() {
+  return Boolean(configuredApiBase || !isGithubPages);
+}
+
+function apiUrl(path) {
+  return configuredApiBase ? `${configuredApiBase}${path}` : path;
+}
+
 cardType.addEventListener("change", () => {
   renderCardInfo(cardType.value);
 });
@@ -145,6 +155,11 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (!hasBackend()) {
+    setMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
+    return;
+  }
+
   const data = new FormData(form);
   data.set("cardType", cardType.value);
 
@@ -154,7 +169,7 @@ form.addEventListener("submit", async (event) => {
   setMessage("", "");
 
   try {
-    const response = await fetch("/api/submissions", {
+    const response = await fetch(apiUrl("/api/submissions"), {
       method: "POST",
       body: data
     });

@@ -8,6 +8,8 @@ const loadBtn = document.querySelector("#loadBtn");
 const recordsEl = document.querySelector("#records");
 const summaryRow = document.querySelector("#summaryRow");
 const adminMessage = document.querySelector("#adminMessage");
+const configuredApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
+const isGithubPages = window.location.hostname.endsWith("github.io");
 
 tokenInput.value = localStorage.getItem("chengjiukaAdminToken") || "";
 
@@ -31,6 +33,14 @@ function formatDate(value) {
 function setAdminMessage(text, type) {
   adminMessage.textContent = text;
   adminMessage.className = `message admin-message ${type || ""}`;
+}
+
+function hasBackend() {
+  return Boolean(configuredApiBase || !isGithubPages);
+}
+
+function apiUrl(path) {
+  return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
 function badgeClass(status) {
@@ -92,7 +102,7 @@ function renderRecords() {
     .map((item) => {
       const attachments = (item.attachments || [])
         .map((file) => {
-          const href = `/api/files/${encodeURIComponent(file.filename)}?token=${token}`;
+          const href = apiUrl(`/api/files/${encodeURIComponent(file.filename)}?token=${token}`);
           return `<a href="${href}" target="_blank" rel="noreferrer">${escapeHtml(file.originalName)}</a>`;
         })
         .join("");
@@ -156,6 +166,11 @@ function renderRecords() {
 }
 
 async function loadRecords() {
+  if (!hasBackend()) {
+    setAdminMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
+    return;
+  }
+
   const token = tokenInput.value.trim();
   if (!token) {
     setAdminMessage("请输入评审口令。", "error");
@@ -169,7 +184,7 @@ async function loadRecords() {
   setAdminMessage("", "");
 
   try {
-    const response = await fetch("/api/submissions", {
+    const response = await fetch(apiUrl("/api/submissions"), {
       headers: { "x-admin-token": token }
     });
     const result = await response.json();
@@ -196,7 +211,7 @@ recordsEl.addEventListener("submit", async (event) => {
   const payload = Object.fromEntries(formData.entries());
 
   try {
-    const response = await fetch(`/api/submissions/${id}/review`, {
+    const response = await fetch(apiUrl(`/api/submissions/${id}/review`), {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
