@@ -6,6 +6,8 @@ const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
 const searchInput = document.querySelector("#searchInput");
 const loadBtn = document.querySelector("#loadBtn");
+const prevRecordBtn = document.querySelector("#prevRecordBtn");
+const nextRecordBtn = document.querySelector("#nextRecordBtn");
 const recordsEl = document.querySelector("#records");
 const summaryRow = document.querySelector("#summaryRow");
 const adminMessage = document.querySelector("#adminMessage");
@@ -90,12 +92,18 @@ function renderSummary(records) {
     .join("");
 }
 
+function updatePagerButtons(total) {
+  prevRecordBtn.disabled = total === 0 || currentRecordIndex === 0;
+  nextRecordBtn.disabled = total === 0 || currentRecordIndex >= total - 1;
+}
+
 function renderRecords() {
   const records = filteredRecords();
   renderSummary(records);
 
   if (records.length === 0) {
     currentRecordIndex = 0;
+    updatePagerButtons(0);
     recordsEl.innerHTML = '<section class="record"><p>暂无符合条件的记录。</p></section>';
     return;
   }
@@ -107,6 +115,8 @@ function renderRecords() {
     currentRecordIndex = 0;
   }
 
+  updatePagerButtons(records.length);
+
   const token = encodeURIComponent(tokenInput.value.trim());
   const item = records[currentRecordIndex];
       const attachments = (item.attachments || [])
@@ -117,11 +127,6 @@ function renderRecords() {
         .join("");
 
   recordsEl.innerHTML = `
-        <nav class="record-pager" aria-label="记录切换">
-          <button type="button" id="prevRecordBtn" ${currentRecordIndex === 0 ? "disabled" : ""}>上一个</button>
-          <span>第 ${currentRecordIndex + 1} 条，共 ${records.length} 条</span>
-          <button type="button" id="nextRecordBtn" ${currentRecordIndex === records.length - 1 ? "disabled" : ""}>下一个</button>
-        </nav>
         <article class="record" data-id="${escapeHtml(item.id)}">
           <div class="record-head">
             <div>
@@ -245,16 +250,14 @@ recordsEl.addEventListener("submit", async (event) => {
   }
 });
 
-recordsEl.addEventListener("click", (event) => {
-  if (event.target.id === "prevRecordBtn") {
-    currentRecordIndex -= 1;
-    renderRecords();
-  }
+prevRecordBtn.addEventListener("click", () => {
+  currentRecordIndex -= 1;
+  renderRecords();
+});
 
-  if (event.target.id === "nextRecordBtn") {
-    currentRecordIndex += 1;
-    renderRecords();
-  }
+nextRecordBtn.addEventListener("click", () => {
+  currentRecordIndex += 1;
+  renderRecords();
 });
 
 [cardFilter, statusFilter, searchInput].forEach((input) => {

@@ -325,10 +325,28 @@ small {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 1.2fr 160px 160px 1fr auto;
+  grid-template-columns: 1.2fr 150px 150px 1fr auto auto;
   gap: 14px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.toolbar-pager {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  white-space: nowrap;
+}
+
+.toolbar-pager button {
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.toolbar-pager button:disabled {
+  cursor: not-allowed;
+  background: #cbd5e1;
+  color: #64748b;
 }
 
 .summary-row {
@@ -357,29 +375,6 @@ small {
 .records {
   display: grid;
   gap: 16px;
-}
-
-.record-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  padding: 14px;
-  box-shadow: var(--shadow);
-}
-
-.record-pager span {
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.record-pager button:disabled {
-  cursor: not-allowed;
-  background: #cbd5e1;
-  color: #64748b;
 }
 
 .record {
