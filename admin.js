@@ -220,10 +220,29 @@ function renderFileDownload(file, token) {
 function renderAttachmentPreviewList(files, token, recordId) {
   const imageFiles = files.filter(isPreviewImage);
   const otherFiles = files.filter((file) => !isPreviewImage(file));
-  const imageBlock = renderImageCarousel(imageFiles, token, recordId);
+  const imageBlock =
+    imageFiles.length > 0
+      ? `
+        <section class="attachment-section">
+          <div class="attachment-section-head">
+            <h4>图片材料</h4>
+            <span>${imageFiles.length} 个</span>
+          </div>
+          ${renderImageCarousel(imageFiles, token, recordId)}
+        </section>
+      `
+      : "";
   const fileBlock =
     otherFiles.length > 0
-      ? `<ul class="file-download-list">${otherFiles.map((file) => renderFileDownload(file, token)).join("")}</ul>`
+      ? `
+        <section class="attachment-section">
+          <div class="attachment-section-head">
+            <h4>文件材料</h4>
+            <span>${otherFiles.length} 个</span>
+          </div>
+          <ul class="file-download-list">${otherFiles.map((file) => renderFileDownload(file, token)).join("")}</ul>
+        </section>
+      `
       : "";
 
   return imageBlock || fileBlock ? `${imageBlock}${fileBlock}` : "无附件";

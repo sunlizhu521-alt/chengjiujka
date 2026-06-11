@@ -721,9 +721,43 @@ small {
   margin-top: 8px;
 }
 
+.attachment-section {
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.attachment-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #dbe4ee;
+  background: #f1f5f9;
+  padding: 10px 12px;
+}
+
+.attachment-section-head h4 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.attachment-section-head span {
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .image-carousel {
   display: grid;
   gap: 8px;
+  padding: 12px;
 }
 
 .image-carousel-head {
@@ -760,9 +794,9 @@ small {
 
 .preview-item {
   margin: 0;
-  border: 1px solid #dbe4ee;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: #fff;
+  background: #f8fafc;
   padding: 10px;
 }
 
@@ -793,7 +827,7 @@ small {
   display: grid;
   gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 12px;
   list-style: none;
 }
 
