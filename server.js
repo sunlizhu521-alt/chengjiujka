@@ -62,7 +62,7 @@ const upload = multer({
 });
 
 const cardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化先锋", "最美工位"]);
-const reviewStatuses = new Set(["待评审", "通过", "驳回", "需补充"]);
+const reviewStatuses = new Set(["待评审", "通过", "不通过", "需补资料", "驳回", "需补充"]);
 
 function readSubmissions() {
   const content = fs.readFileSync(submissionsFile, "utf8").replace(/^\uFEFF/, "");

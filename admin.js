@@ -127,10 +127,17 @@ function apiUrl(path) {
 }
 
 function badgeClass(status) {
+  status = normalizeReviewStatus(status);
   if (status === "通过") return "badge pass";
-  if (status === "驳回") return "badge reject";
-  if (status === "待评审" || status === "需补充") return "badge pending";
+  if (status === "不通过") return "badge reject";
+  if (status === "待评审" || status === "需补资料") return "badge pending";
   return "badge";
+}
+
+function normalizeReviewStatus(status) {
+  if (status === "驳回") return "不通过";
+  if (status === "需补充") return "需补资料";
+  return status || "待评审";
 }
 
 function reviewerList(value) {
@@ -196,7 +203,7 @@ function filteredRecords() {
 
   return allRecords.filter((item) => {
     const matchesCard = !card || item.cardType === card;
-    const matchesStatus = !status || item.reviewStatus === status;
+    const matchesStatus = !status || normalizeReviewStatus(item.reviewStatus) === status;
     const haystack = [
       item.cardType,
       item.applicantName,
@@ -215,13 +222,15 @@ function renderSummary(records) {
   const total = records.length;
   const pending = records.filter((item) => item.reviewStatus === "待评审").length;
   const passed = records.filter((item) => item.reviewStatus === "通过").length;
-  const needMore = records.filter((item) => item.reviewStatus === "需补充").length;
+  const rejected = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "不通过").length;
+  const needMore = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "需补资料").length;
 
   summaryRow.innerHTML = [
     ["当前记录", total],
     ["待评审", pending],
     ["已通过", passed],
-    ["需补充", needMore]
+    ["不通过", rejected],
+    ["需补资料", needMore]
   ]
     .map((item) => `<div class="summary-card"><strong>${item[1]}</strong><span>${item[0]}</span></div>`)
     .join("");
@@ -258,6 +267,7 @@ function renderRecords() {
   const checkedReviewers = reviewerList(item.reviewer);
   const autoScore = detail.score || "";
   const attachments = (item.attachments || []).map((file) => renderAttachmentPreview(file, token)).join("");
+  const currentStatus = normalizeReviewStatus(item.reviewStatus);
 
   recordsEl.innerHTML = `
         <article class="record" data-id="${escapeHtml(item.id)}">
@@ -266,7 +276,7 @@ function renderRecords() {
               <h3 class="record-title">${escapeHtml(item.cardType)} - ${escapeHtml(item.applicantName)}</h3>
               <p>提交时间：${escapeHtml(formatDate(item.submittedAt))}</p>
             </div>
-            <span class="${badgeClass(item.reviewStatus)}">${escapeHtml(item.reviewStatus)}</span>
+            <span class="${badgeClass(currentStatus)}">${escapeHtml(currentStatus)}</span>
           </div>
 
           <div class="record-grid">
@@ -301,28 +311,46 @@ function renderRecords() {
             <div class="attachment-preview-list">${attachments || "无附件"}</div>
           </div>
 
-          <form class="review-form">
-            <label class="field">
-              <span>评审意见</span>
-              <input name="reviewComment" value="${escapeHtml(item.reviewComment)}" />
-            </label>
-            <div class="reviewer-checks" role="group" aria-label="评审人">
-              <strong>评审是否通过：</strong>
-              ${reviewers
-                .map(
-                  (name) => `
-                    <label>
-                      <input type="checkbox" name="reviewer" value="${escapeHtml(name)}" ${
-                    checkedReviewers.includes(name) ? "checked" : ""
-                  } />
-                      <span>${escapeHtml(name)}</span>
-                    </label>
-                  `
-                )
-                .join("")}
-            </div>
-            <button type="submit">保存</button>
-          </form>
+          <section class="review-feedback">
+            <h3>评审反馈</h3>
+            <form class="review-form">
+              <div class="reviewer-checks" role="group" aria-label="是否通过投票">
+                <strong>是否通过投票：</strong>
+                ${reviewers
+                  .map(
+                    (name) => `
+                      <label>
+                        <input type="checkbox" name="reviewer" value="${escapeHtml(name)}" ${
+                      checkedReviewers.includes(name) ? "checked" : ""
+                    } />
+                        <span>${escapeHtml(name)}</span>
+                      </label>
+                    `
+                  )
+                  .join("")}
+              </div>
+              <div class="review-result-options" role="group" aria-label="评审结果">
+                <strong>评审结果：</strong>
+                ${["通过", "不通过", "需补资料"]
+                  .map(
+                    (status) => `
+                      <label>
+                        <input type="radio" name="reviewStatus" value="${status}" ${
+                      currentStatus === status ? "checked" : ""
+                    } />
+                        <span>${status}</span>
+                      </label>
+                    `
+                  )
+                  .join("")}
+              </div>
+              <label class="field review-comment-field">
+                <span>评审意见</span>
+                <textarea name="reviewComment" rows="2">${escapeHtml(item.reviewComment)}</textarea>
+              </label>
+              <button type="submit">保存</button>
+            </form>
+          </section>
         </article>
       `;
 }
@@ -376,7 +404,7 @@ recordsEl.addEventListener("submit", async (event) => {
   const currentDetail = currentRecord ? cardDetails[currentRecord.cardType] : null;
   payload.reviewer = selectedReviewers.join("、");
   payload.score = String((currentDetail || {}).score || "");
-  payload.reviewStatus = selectedReviewers.length > 3 ? "通过" : "待评审";
+  payload.reviewStatus = formData.get("reviewStatus") || "待评审";
 
   try {
     const response = await fetch(apiUrl(`/api/submissions/${id}/review`), {
@@ -409,13 +437,6 @@ prevRecordBtn.addEventListener("click", () => {
 nextRecordBtn.addEventListener("click", () => {
   currentRecordIndex += 1;
   renderRecords();
-});
-
-recordsEl.addEventListener("change", (event) => {
-  if (event.target.name !== "reviewer") return;
-  const form = event.target.closest(".review-form");
-  const selectedCount = form.querySelectorAll('input[name="reviewer"]:checked').length;
-  form.classList.toggle("is-auto-passed", selectedCount > 3);
 });
 
 [cardFilter, statusFilter, searchInput].forEach((input) => {
