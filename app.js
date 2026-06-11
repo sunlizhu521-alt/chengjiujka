@@ -88,10 +88,13 @@ const cardInfo = document.querySelector("#cardInfo");
 const form = document.querySelector("#applicationForm");
 const message = document.querySelector("#message");
 const dateInput = form.querySelector('input[name="applicationDate"]');
+const attachmentInput = document.querySelector("#attachmentInput");
+const attachmentList = document.querySelector("#attachmentList");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
 let selectedCardType = "";
+let selectedFiles = [];
 
 dateInput.valueAsDate = new Date();
 
@@ -154,6 +157,51 @@ function setMessage(text, type) {
   message.className = `message ${type || ""}`;
 }
 
+function formatFileSize(size) {
+  if (size >= 1024 * 1024) {
+    return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  }
+  if (size >= 1024) {
+    return `${(size / 1024).toFixed(1)} KB`;
+  }
+  return `${size} B`;
+}
+
+function fileKey(file) {
+  return `${file.name}-${file.size}-${file.lastModified}`;
+}
+
+function renderSelectedFiles() {
+  if (selectedFiles.length === 0) {
+    attachmentList.innerHTML = '<p class="empty-files">尚未选择材料。</p>';
+    return;
+  }
+
+  attachmentList.innerHTML = `
+    <strong>已选材料（${selectedFiles.length}/10）</strong>
+    <ul>
+      ${selectedFiles
+        .map(
+          (file, index) => `
+            <li>
+              <span>${escapeHtml(file.name)} <em>${escapeHtml(formatFileSize(file.size))}</em></span>
+              <button type="button" class="remove-file-btn" data-file-index="${index}">移除</button>
+            </li>
+          `
+        )
+        .join("")}
+    </ul>
+  `;
+}
+
+function addSelectedFiles(files) {
+  const existingKeys = new Set(selectedFiles.map(fileKey));
+  const incoming = Array.from(files).filter((file) => !existingKeys.has(fileKey(file)));
+  selectedFiles = selectedFiles.concat(incoming).slice(0, 10);
+  attachmentInput.value = "";
+  renderSelectedFiles();
+}
+
 function hasBackend() {
   return Boolean(configuredApiBase || !isGithubPages);
 }
@@ -166,6 +214,19 @@ cardButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectCard(button.dataset.cardType);
   });
+});
+
+attachmentInput.addEventListener("change", () => {
+  addSelectedFiles(attachmentInput.files);
+});
+
+attachmentList.addEventListener("click", (event) => {
+  if (!event.target.classList.contains("remove-file-btn")) {
+    return;
+  }
+  const index = Number(event.target.dataset.fileIndex);
+  selectedFiles = selectedFiles.filter((file, fileIndex) => fileIndex !== index);
+  renderSelectedFiles();
 });
 
 form.addEventListener("submit", async (event) => {
@@ -184,8 +245,18 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (selectedFiles.length === 0) {
+    setMessage("请至少上传一个证明材料。", "error");
+    attachmentInput.focus();
+    return;
+  }
+
   const data = new FormData(form);
+  data.delete("attachments");
   data.set("cardType", selectedCardType);
+  selectedFiles.forEach((file) => {
+    data.append("attachments", file, file.name);
+  });
 
   const submitBtn = form.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
@@ -202,6 +273,8 @@ form.addEventListener("submit", async (event) => {
 
     form.reset();
     dateInput.valueAsDate = new Date();
+    selectedFiles = [];
+    renderSelectedFiles();
     clearCardSelection();
     setMessage(`${result.message} 编号：${result.id}`, "success");
   } catch (error) {
@@ -211,3 +284,5 @@ form.addEventListener("submit", async (event) => {
     submitBtn.textContent = "提交申请";
   }
 });
+
+renderSelectedFiles();

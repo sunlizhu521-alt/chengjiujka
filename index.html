@@ -64,9 +64,10 @@
         </label>
         <label class="field">
           <span>材料上传 <b>*</b></span>
-          <input type="file" name="attachments" multiple required />
-          <small>可一次选择多个文件，文件类型不限，支持图片、截图、文档、表格、PDF、压缩包等；单个文件最大 50MB，最多 10 个。</small>
+          <input id="attachmentInput" type="file" name="attachments" multiple />
+          <small>可分多次选择文件，后选文件会追加到已选材料中，不会覆盖之前文件；文件类型不限，单个文件最大 50MB，最多 10 个。</small>
         </label>
+        <div id="attachmentList" class="selected-files" aria-live="polite"></div>
 
         <h2>四、提交确认</h2>
         <label class="checkline">
@@ -81,7 +82,7 @@
       </form>
     </main>
 
-    <script src="./config.js?v=20260611-4"></script>
-    <script src="./app.js?v=20260611-4"></script>
+    <script src="./config.js?v=20260611-6"></script>
+    <script src="./app.js?v=20260611-6"></script>
   </body>
 </html>
