@@ -95,8 +95,21 @@ docs/config.js         GitHub Pages 前端使用的后端地址配置
 docs/app.js            申请页交互逻辑
 docs/admin.js          评审页交互逻辑
 docs/styles.css        页面样式
-data/submissions.json  提交数据，本地运行后自动生成
-uploads/               附件保存目录
+```
+
+## 本地文件库存储路径
+
+默认情况下，提交记录和附件会保存到你的本地文件库：
+
+```text
+D:\BI文件\成就值卡\github-文件库\data\submissions.json
+D:\BI文件\成就值卡\github-文件库\uploads\
+```
+
+如果以后要换位置，可以设置环境变量：
+
+```bash
+STORAGE_DIR=D:\BI文件\成就值卡\github-文件库
 ```
 
 ## 附件规则

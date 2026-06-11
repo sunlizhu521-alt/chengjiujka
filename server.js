@@ -11,8 +11,9 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 
 const rootDir = __dirname;
 const publicDir = path.join(rootDir, "docs");
-const dataDir = path.join(rootDir, "data");
-const uploadDir = path.join(rootDir, "uploads");
+const storageRoot = process.env.STORAGE_DIR || "D:\\BI文件\\成就值卡\\github-文件库";
+const dataDir = path.join(storageRoot, "data");
+const uploadDir = path.join(storageRoot, "uploads");
 const submissionsFile = path.join(dataDir, "submissions.json");
 
 fs.mkdirSync(dataDir, { recursive: true });
