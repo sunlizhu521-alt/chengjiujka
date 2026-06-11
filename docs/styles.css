@@ -84,6 +84,16 @@ button {
   white-space: nowrap;
 }
 
+.top-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.secondary-link {
+  background: #334155;
+}
+
 button {
   min-height: 42px;
   padding: 0 18px;
@@ -401,6 +411,14 @@ small {
   margin-bottom: 18px;
 }
 
+.summary-toolbar {
+  display: grid;
+  grid-template-columns: 1.2fr 150px 150px 1fr auto;
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
 .toolbar-pager {
   display: flex;
   gap: 8px;
@@ -421,7 +439,7 @@ small {
 
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -445,6 +463,59 @@ small {
 .records {
   display: grid;
   gap: 16px;
+}
+
+.summary-table-panel {
+  overflow: hidden;
+}
+
+.summary-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.summary-table-head h2 {
+  margin: 0;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.summary-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.summary-table th,
+.summary-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.summary-table th {
+  background: #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.summary-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.summary-comment {
+  min-width: 220px;
+  overflow-wrap: anywhere;
 }
 
 .record {
@@ -726,6 +797,7 @@ small {
 
   .layout,
   .toolbar,
+  .summary-toolbar,
   .review-form,
   .query-form {
     grid-template-columns: 1fr;
@@ -755,5 +827,12 @@ small {
   .admin-link {
     width: 100%;
     justify-content: center;
+  }
+
+  .top-actions,
+  .summary-table-head {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
   }
 }
