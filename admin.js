@@ -1,5 +1,6 @@
 let allRecords = [];
 let currentRecordIndex = 0;
+const attachmentImageIndexes = {};
 
 const cardDetails = {
   奋斗者: {
@@ -151,49 +152,63 @@ function renderRuleList(rules) {
   return `<ol>${rules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ol>`;
 }
 
-function fileUrl(file, token) {
-  return apiUrl(`/api/files/${encodeURIComponent(file.filename)}?token=${token}`);
+function fileUrl(file, token, options = {}) {
+  const downloadFlag = options.download ? "&download=1" : "";
+  return apiUrl(`/api/files/${encodeURIComponent(file.filename)}?token=${token}${downloadFlag}`);
 }
 
 function isPreviewImage(file) {
   return String(file.mimetype || "").startsWith("image/");
 }
 
-function isEmbeddableFile(file) {
-  const mime = String(file.mimetype || "");
-  const name = String(file.originalName || "").toLowerCase();
-  return mime.includes("pdf") || mime.startsWith("text/") || /\.(txt|csv|json|md|pdf)$/i.test(name);
-}
-
-function renderAttachmentPreview(file, token) {
+function renderImageCarousel(files, token, recordId) {
+  if (files.length === 0) return "";
+  const savedIndex = attachmentImageIndexes[recordId] || 0;
+  const currentIndex = Math.min(Math.max(savedIndex, 0), files.length - 1);
+  attachmentImageIndexes[recordId] = currentIndex;
+  const file = files[currentIndex];
   const href = fileUrl(file, token);
   const name = escapeHtml(file.originalName);
-  if (isPreviewImage(file)) {
-    return `
-      <figure class="preview-item">
+
+  return `
+    <div class="image-carousel" data-record-id="${escapeHtml(recordId)}">
+      <div class="image-carousel-head">
+        <span>图片 ${currentIndex + 1} / ${files.length}</span>
+        <div class="image-carousel-actions">
+          <button type="button" class="attachment-image-prev" data-direction="-1" ${files.length <= 1 ? "disabled" : ""}>上一张</button>
+          <button type="button" class="attachment-image-next" data-direction="1" ${files.length <= 1 ? "disabled" : ""}>下一张</button>
+        </div>
+      </div>
+      <figure class="preview-item image-preview-item">
         <figcaption>${name}</figcaption>
         <img src="${href}" alt="${name}" loading="lazy" />
       </figure>
-    `;
-  }
+    </div>
+  `;
+}
 
-  if (isEmbeddableFile(file)) {
-    return `
-      <figure class="preview-item">
-        <figcaption>${name}</figcaption>
-        <iframe src="${href}" title="${name}"></iframe>
-      </figure>
-    `;
-  }
+function renderFileDownload(file, token) {
+  const href = fileUrl(file, token, { download: true });
+  const name = escapeHtml(file.originalName);
 
   return `
-    <figure class="preview-item">
-      <figcaption>${name}</figcaption>
-      <object data="${href}" type="${escapeHtml(file.mimetype || "application/octet-stream")}">
-        <p>当前浏览器不支持直接预览此类型文件，请在本机文件库中查看原文件。</p>
-      </object>
-    </figure>
+    <li class="file-download-item">
+      <span>${name}</span>
+      <a class="download-button" href="${href}" download="${name}">下载</a>
+    </li>
   `;
+}
+
+function renderAttachmentPreviewList(files, token, recordId) {
+  const imageFiles = files.filter(isPreviewImage);
+  const otherFiles = files.filter((file) => !isPreviewImage(file));
+  const imageBlock = renderImageCarousel(imageFiles, token, recordId);
+  const fileBlock =
+    otherFiles.length > 0
+      ? `<ul class="file-download-list">${otherFiles.map((file) => renderFileDownload(file, token)).join("")}</ul>`
+      : "";
+
+  return imageBlock || fileBlock ? `${imageBlock}${fileBlock}` : "无附件";
 }
 
 function filteredRecords() {
@@ -266,7 +281,7 @@ function renderRecords() {
   const detail = cardDetails[item.cardType] || { applicationRules: [], reviewRules: [], score: "" };
   const checkedReviewers = reviewerList(item.reviewer);
   const autoScore = detail.score || "";
-  const attachments = (item.attachments || []).map((file) => renderAttachmentPreview(file, token)).join("");
+  const attachments = renderAttachmentPreviewList(item.attachments || [], token, item.id);
   const currentStatus = normalizeReviewStatus(item.reviewStatus);
 
   recordsEl.innerHTML = `
@@ -308,7 +323,7 @@ function renderRecords() {
 
           <div class="attachments">
             <strong>附件预览</strong>
-            <div class="attachment-preview-list">${attachments || "无附件"}</div>
+            <div class="attachment-preview-list">${attachments}</div>
           </div>
 
           <section class="review-feedback">
@@ -427,6 +442,22 @@ recordsEl.addEventListener("submit", async (event) => {
   } catch (error) {
     setAdminMessage(error.message, "error");
   }
+});
+
+recordsEl.addEventListener("click", (event) => {
+  const button = event.target.closest(".attachment-image-prev, .attachment-image-next");
+  if (!button) return;
+
+  const carousel = button.closest(".image-carousel");
+  const recordId = carousel ? carousel.dataset.recordId : "";
+  const record = allRecords.find((item) => item.id === recordId);
+  const imageCount = record ? (record.attachments || []).filter(isPreviewImage).length : 0;
+  if (!recordId || imageCount <= 1) return;
+
+  const direction = Number(button.dataset.direction || 0);
+  const currentIndex = attachmentImageIndexes[recordId] || 0;
+  attachmentImageIndexes[recordId] = (currentIndex + direction + imageCount) % imageCount;
+  renderRecords();
 });
 
 prevRecordBtn.addEventListener("click", () => {

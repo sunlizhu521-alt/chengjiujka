@@ -192,7 +192,17 @@ app.get("/api/files/:filename", requireAdmin, (req, res) => {
   if (!fs.existsSync(filePath)) {
     return res.status(404).send("文件不存在");
   }
-  res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(safeName)}"`);
+  const records = readSubmissions();
+  const attachment = records
+    .flatMap((record) => record.attachments || [])
+    .find((file) => file.filename === safeName);
+  const displayName = attachment ? attachment.originalName : safeName;
+
+  if (req.query.download === "1") {
+    return res.download(filePath, displayName);
+  }
+
+  res.setHeader("Content-Disposition", `inline; filename*=UTF-8''${encodeURIComponent(displayName)}`);
   res.sendFile(filePath);
 });
 

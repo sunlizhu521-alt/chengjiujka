@@ -487,6 +487,43 @@ small {
   margin-top: 8px;
 }
 
+.image-carousel {
+  display: grid;
+  gap: 8px;
+}
+
+.image-carousel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.image-carousel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.image-carousel-actions button,
+.download-button {
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--blue-dark);
+  background: #eff6ff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.image-carousel-actions button:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
 .preview-item {
   margin: 0;
   border: 1px solid #dbe4ee;
@@ -516,6 +553,30 @@ small {
   display: block;
   max-height: 520px;
   object-fit: contain;
+}
+
+.file-download-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file-download-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #dbe4ee;
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
+}
+
+.file-download-item span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .review-form {
