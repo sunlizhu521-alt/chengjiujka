@@ -366,8 +366,8 @@ function renderRecords() {
           <section class="review-feedback">
             <h3>评审反馈</h3>
             <form class="review-form">
-              <div class="reviewer-checks" role="group" aria-label="是否通过投票">
-                <strong>是否通过投票：</strong>
+              <div class="reviewer-checks" role="group" aria-label="评审参与人">
+                <strong>评审参与人：</strong>
                 ${reviewers
                   .map(
                     (name) => `

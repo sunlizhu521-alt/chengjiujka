@@ -207,7 +207,7 @@ function renderResultRecords(records) {
             <div><span>提交时间</span>${escapeHtml(formatDateTime(item.submittedAt))}</div>
             <div><span>评审日期</span>${escapeHtml(item.reviewDate || "暂未评审")}</div>
             <div><span>成就卡分值</span>${escapeHtml(item.score ? `${item.score}分` : "暂未评定")}</div>
-            <div><span>是否通过投票</span>${escapeHtml(item.reviewer || "暂未填写")}</div>
+            <div><span>评审参与人</span>${escapeHtml(item.reviewer || "暂未填写")}</div>
           </div>
           <p><strong>评审意见：</strong>${escapeHtml(item.reviewComment || "暂无评审意见")}</p>
         </article>
