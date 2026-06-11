@@ -1,5 +1,6 @@
 const cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
-const cardButtons = Array.from(document.querySelectorAll(".card-choice"));
+const cardChoices = document.querySelector("#cardChoices");
+const cardFilterButtons = Array.from(document.querySelectorAll(".card-filter-btn"));
 const cardInfo = document.querySelector("#cardInfo");
 const form = document.querySelector("#applicationForm");
 const message = document.querySelector("#message");
@@ -14,6 +15,7 @@ const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).repla
 const isGithubPages = window.location.hostname.endsWith("github.io");
 let selectedCardType = "";
 let selectedFiles = [];
+let currentCardFilter = "open";
 
 dateInput.valueAsDate = new Date();
 
@@ -31,7 +33,40 @@ function escapeHtml(value) {
 
 function formatCardScore(score) {
   const value = String(score || "").trim();
+  if (!value) return "暂未开放";
   return value.endsWith("分") ? value : `${value}分`;
+}
+
+function isOpenCard(detail) {
+  return Boolean(String((detail || {}).definition || "").trim());
+}
+
+function currentCardButtons() {
+  return Array.from(document.querySelectorAll(".card-choice"));
+}
+
+function renderCardChoices() {
+  const isOpenFilter = currentCardFilter === "open";
+  const cards = Object.entries(cardDetails).filter(([, detail]) => isOpenCard(detail) === isOpenFilter);
+
+  cardChoices.innerHTML =
+    cards
+      .map(([name, detail]) => {
+        const isOpen = isOpenCard(detail);
+        const isSelected = selectedCardType === name;
+        return `
+          <button
+            class="card-choice ${isSelected ? "is-selected" : ""} ${isOpen ? "" : "is-closed"}"
+            type="button"
+            data-card-type="${escapeHtml(name)}"
+            aria-pressed="${isSelected}"
+          >
+            <span>${escapeHtml(name)}</span>
+            <em>${isOpen ? "已开放" : "暂未开放"}</em>
+          </button>
+        `;
+      })
+      .join("") || '<p class="empty-files">暂无对应成就卡。</p>';
 }
 
 function renderCardInfo(name) {
@@ -39,6 +74,18 @@ function renderCardInfo(name) {
   if (!detail) {
     cardInfo.hidden = true;
     cardInfo.innerHTML = "";
+    return;
+  }
+
+  if (!isOpenCard(detail)) {
+    cardInfo.hidden = false;
+    cardInfo.innerHTML = `
+      <h3>${escapeHtml(name)}</h3>
+      <div class="closed-card-notice">
+        <strong>暂未开放</strong>
+        <p>该成就卡目前还没有明确的成就卡定义、申请细则和评审细则，暂不支持提交申请。</p>
+      </div>
+    `;
     return;
   }
 
@@ -58,18 +105,31 @@ function renderCardInfo(name) {
 }
 
 function selectCard(name) {
+  const detail = cardDetails[name];
+  if (!isOpenCard(detail)) {
+    selectedCardType = "";
+    currentCardButtons().forEach((button) => {
+      button.classList.toggle("is-selected", button.dataset.cardType === name);
+      button.setAttribute("aria-pressed", String(button.dataset.cardType === name));
+    });
+    renderCardInfo(name);
+    setMessage("该成就卡暂未开放，暂不支持提交申请。", "error");
+    return;
+  }
+
   selectedCardType = name;
-  cardButtons.forEach((button) => {
+  currentCardButtons().forEach((button) => {
     const isSelected = button.dataset.cardType === name;
     button.classList.toggle("is-selected", isSelected);
     button.setAttribute("aria-pressed", String(isSelected));
   });
   renderCardInfo(name);
+  setMessage("", "");
 }
 
 function clearCardSelection() {
   selectedCardType = "";
-  cardButtons.forEach((button) => {
+  currentCardButtons().forEach((button) => {
     button.classList.remove("is-selected");
     button.setAttribute("aria-pressed", "false");
   });
@@ -175,10 +235,24 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
-cardButtons.forEach((button) => {
+cardFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    selectCard(button.dataset.cardType);
+    currentCardFilter = button.dataset.cardFilter;
+    cardFilterButtons.forEach((item) => {
+      const isSelected = item === button;
+      item.classList.toggle("is-selected", isSelected);
+      item.setAttribute("aria-pressed", String(isSelected));
+    });
+    clearCardSelection();
+    renderCardChoices();
+    setMessage("", "");
   });
+});
+
+cardChoices.addEventListener("click", (event) => {
+  const button = event.target.closest(".card-choice");
+  if (!button) return;
+  selectCard(button.dataset.cardType);
 });
 
 attachmentInput.addEventListener("change", () => {
@@ -199,8 +273,9 @@ form.addEventListener("submit", async (event) => {
 
   if (!selectedCardType) {
     setMessage("请先选择申报成就卡项目。", "error");
-    if (cardButtons[0]) {
-      cardButtons[0].focus();
+    const firstOpenButton = currentCardButtons().find((button) => !button.classList.contains("is-closed"));
+    if (firstOpenButton) {
+      firstOpenButton.focus();
     }
     return;
   }
@@ -282,3 +357,4 @@ resultQueryForm.addEventListener("submit", async (event) => {
 });
 
 renderSelectedFiles();
+renderCardChoices();

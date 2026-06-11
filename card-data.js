@@ -88,5 +88,85 @@ window.CHENGJIUKA_CARD_DETAILS = {
     score: 5,
     reviewRules: ["工位照片、全公司投票结果。", "成就卡评审小组审核结果。", "行政日常检查/抽查记录。"],
     sources: "工位照片、全公司投票结果、成就卡评审小组审核结果、行政日常检查/抽查记录。"
+  },
+  主人翁: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  省钱能手: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  精益达人: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  企业形象: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  内推达人: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  最可爱的人: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  卓越导师: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  创新达人: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  服务之星: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
+  },
+  AI领航员: {
+    definition: "",
+    applicationRules: [],
+    cycle: "",
+    score: "",
+    reviewRules: [],
+    sources: ""
   }
 };

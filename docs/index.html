@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡申请表</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611-17" />
+    <link rel="stylesheet" href="./styles.css?v=20260611-23" />
   </head>
   <body>
     <header class="topbar">
@@ -23,13 +23,11 @@
         <h2>一、申报项目</h2>
         <div class="field">
           <span>申报成就卡项目 <b>*</b></span>
-          <div id="cardChoices" class="card-choice-group" role="radiogroup" aria-label="申报成就卡项目">
-            <button class="card-choice" type="button" data-card-type="奋斗者" aria-pressed="false">奋斗者</button>
-            <button class="card-choice" type="button" data-card-type="分享达人" aria-pressed="false">分享达人</button>
-            <button class="card-choice" type="button" data-card-type="业绩之王" aria-pressed="false">业绩之王</button>
-            <button class="card-choice" type="button" data-card-type="文化先锋" aria-pressed="false">文化先锋</button>
-            <button class="card-choice" type="button" data-card-type="最美工位" aria-pressed="false">最美工位</button>
+          <div class="card-filter" role="group" aria-label="成就卡开放状态筛选">
+            <button class="card-filter-btn is-selected" type="button" data-card-filter="open" aria-pressed="true">已开放的成就卡</button>
+            <button class="card-filter-btn" type="button" data-card-filter="closed" aria-pressed="false">暂未开放的成就卡</button>
           </div>
+          <div id="cardChoices" class="card-choice-group" role="radiogroup" aria-label="申报成就卡项目"></div>
         </div>
 
         <article id="cardInfo" class="card-info" hidden></article>
@@ -117,7 +115,7 @@
     </main>
 
     <script src="./config.js?v=20260611-6"></script>
-    <script src="./card-data.js?v=20260611-22"></script>
-    <script src="./app.js?v=20260611-22"></script>
+    <script src="./card-data.js?v=20260611-23"></script>
+    <script src="./app.js?v=20260611-23"></script>
   </body>
 </html>
