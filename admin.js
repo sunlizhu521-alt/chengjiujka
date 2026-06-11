@@ -323,13 +323,13 @@ function renderRecords() {
 
           <section class="review-reference">
             <h3>评审参考</h3>
-            <p><strong>成就卡定义：</strong>${escapeHtml(detail.definition || "未配置")}</p>
-            <p><strong>申请细则：</strong></p>
-            ${renderRuleList(detail.applicationRules || [])}
             <div class="meta-grid">
               <div class="meta"><strong>周期</strong>${escapeHtml(detail.cycle || "未配置")}</div>
               <div class="meta"><strong>分值</strong>${escapeHtml(autoScore ? `${autoScore}分` : "未配置")}</div>
             </div>
+            <p><strong>成就卡定义：</strong>${escapeHtml(detail.definition || "未配置")}</p>
+            <p><strong>申请细则：</strong></p>
+            ${renderRuleList(detail.applicationRules || [])}
             <p><strong>评审细则：</strong></p>
             ${renderRuleList(detail.reviewRules || [])}
           </section>

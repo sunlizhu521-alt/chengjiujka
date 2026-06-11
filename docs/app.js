@@ -142,13 +142,13 @@ function renderCardInfo(name) {
   cardInfo.hidden = false;
   cardInfo.innerHTML = `
     <h3>${escapeHtml(name)}</h3>
-    <p><strong>成就卡定义：</strong>${escapeHtml(detail.definition)}</p>
-    <p><strong>申请细则：</strong></p>
-    <ol>${detail.applicationRules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ol>
     <div class="meta-grid">
       <div class="meta"><strong>周期</strong>${escapeHtml(detail.cycle)}</div>
       <div class="meta"><strong>分值</strong>${escapeHtml(detail.score)}</div>
     </div>
+    <p><strong>成就卡定义：</strong>${escapeHtml(detail.definition)}</p>
+    <p><strong>申请细则：</strong></p>
+    <ol>${detail.applicationRules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ol>
     <p><strong>评审细则：</strong></p>
     <ol>${detail.reviewRules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ol>
   `;
