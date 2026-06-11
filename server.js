@@ -192,7 +192,8 @@ app.get("/api/files/:filename", requireAdmin, (req, res) => {
   if (!fs.existsSync(filePath)) {
     return res.status(404).send("文件不存在");
   }
-  res.download(filePath);
+  res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(safeName)}"`);
+  res.sendFile(filePath);
 });
 
 app.use((err, req, res, next) => {

@@ -1,6 +1,85 @@
 let allRecords = [];
 let currentRecordIndex = 0;
 
+const cardDetails = {
+  奋斗者: {
+    definition:
+      "员工在保证身体健康和工作状态的前提下，基于工作需要自愿投入非正常上班时间，持续保持较高专注度和责任心，体现积极负责、主动奋斗的工作状态。",
+    applicationRules: ["主动提交申请，说明自愿投入的具体工作事项或场景。", "上传与本次申请相关的证明材料，附件内容不限。"],
+    cycle: "一年",
+    score: 10,
+    reviewRules: [
+      "员工需主动提交申请，并说明自愿投入的具体工作事项或场景。",
+      "由人事协助核实最近30天打卡记录。",
+      "投入时长按最近30天内扣除正常上班时间和已提交加班申请后的额外自愿投入时长计算。",
+      "自愿投入时长排名前10%的，可作为认定依据。",
+      "需核查是否存在代打卡、异常打卡、无效留岗等情况。",
+      "如存在弄虚作假、无实际工作投入或明显影响工作状态、身体健康的情况，不予认定。",
+      "相关材料提交至成就卡评审小组，由评审小组审核认定。"
+    ]
+  },
+  分享达人: {
+    definition:
+      "员工主动将自己的工作经验、专业知识、工具方法或优秀案例整理成可分享内容，并申请组织正式分享会进行现场分享，帮助团队提升能力或工作效率。",
+    applicationRules: ["提交分享主题、分享内容简介及相关记录材料。", "上传与本次申请相关的证明材料，附件内容不限。"],
+    cycle: "一年",
+    score: 10,
+    reviewRules: [
+      "分享内容需与工作经验、专业知识、工具方法或优秀案例相关。",
+      "员工需提前申请组织正式分享会，明确分享主题、分享人、时间和参会人员。",
+      "分享会实际参加人数不少于10人。",
+      "分享会现场需使用成就卡评审小组提供的评分二维码进行满意度评分，满分5颗星，平均评分超过4颗星即可认定。",
+      "分享会需保留现场记录，如签到、照片、会议纪要或分享记录。",
+      "分享资料、分享内容和现场记录需提交至成就卡评审小组。",
+      "分享内容和现场组织需真实有效，无明显敷衍或走形式情况。"
+    ]
+  },
+  业绩之王: {
+    definition: "面向所有运营同事，奖励在季度业绩中贡献占比最高，或在新业务增长中表现最突出的员工。",
+    applicationRules: ["提交申报季度、所属事业部、业绩贡献说明及相关证明材料。", "上传与本次申请相关的证明材料，附件内容不限。"],
+    cycle: "一季度",
+    score: 10,
+    reviewRules: [
+      "每季度评定一次，提交时间为每个季度第一个月。",
+      "参考数据为上一季度财务确认后的业绩数据。",
+      "个人运营业绩占所在事业部总业绩比例最高的，可评为业绩之王。",
+      "新业务按季度业绩增长率评定，增长最快且连续3个月增速均达到30%以上的，可评为业绩之王。",
+      "由事业部提报候选人及业绩说明，财务部门辅助提供或核实相关业绩数据。",
+      "数据需真实有效，无异常订单、虚假数据或重大客户投诉。",
+      "相关材料提交至成就卡评审小组，由评审小组审核认定。"
+    ]
+  },
+  文化先锋: {
+    definition:
+      "员工主动践行和传播公司文化，在工作中有具体正向事迹或实际行动，能够体现公司愿景、使命、价值观、经营理念或团队精神。",
+    applicationRules: ["提交文化事迹说明及相关证明材料。", "上传与本次申请相关的证明材料，附件内容不限。"],
+    cycle: "一年",
+    score: 10,
+    reviewRules: [
+      "员工需有主动践行或传播公司文化的具体事迹，不限于文化分享、正向案例、客户服务、团队协作、产品使命实践等。",
+      "事迹需真实、正向，有明确发生时间、事项经过和实际影响。",
+      "申请人需提交事迹说明及相关证明材料。",
+      "相关材料提交至成就卡评审小组，由评审小组审核认定。"
+    ]
+  },
+  最美工位: {
+    definition:
+      "员工长期保持个人工位干净整洁、物品摆放有序，并主动维护办公环境，展现良好的职业形象和办公习惯。",
+    applicationRules: ["提交清晰的个人工位照片及工位维护说明。", "上传与本次申请相关的证明材料，附件内容不限。"],
+    cycle: "一季度",
+    score: 5,
+    reviewRules: [
+      "第一批收集全公司员工工位照片，由全公司投票评选，得票前三名可评为最美工位。",
+      "后续新增申报人员需提交工位照片，参考已获得者标准进行评定。",
+      "后续评定采用投票制，支持票数超过60%即可获得。",
+      "工位需日常保持整洁有序，不能只在评定前临时整理。",
+      "如日常检查中发现工位明显脏乱，可取消申报或认定资格。"
+    ]
+  }
+};
+
+const reviewers = ["惠李伟", "王斌", "孙立柱", "任蒨", "蒋炳兰"];
+
 const tokenInput = document.querySelector("#adminToken");
 const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
@@ -52,6 +131,62 @@ function badgeClass(status) {
   if (status === "驳回") return "badge reject";
   if (status === "待评审" || status === "需补充") return "badge pending";
   return "badge";
+}
+
+function reviewerList(value) {
+  return String(value || "")
+    .split(/[、,，]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function renderRuleList(rules) {
+  return `<ol>${rules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ol>`;
+}
+
+function fileUrl(file, token) {
+  return apiUrl(`/api/files/${encodeURIComponent(file.filename)}?token=${token}`);
+}
+
+function isPreviewImage(file) {
+  return String(file.mimetype || "").startsWith("image/");
+}
+
+function isEmbeddableFile(file) {
+  const mime = String(file.mimetype || "");
+  const name = String(file.originalName || "").toLowerCase();
+  return mime.includes("pdf") || mime.startsWith("text/") || /\.(txt|csv|json|md|pdf)$/i.test(name);
+}
+
+function renderAttachmentPreview(file, token) {
+  const href = fileUrl(file, token);
+  const name = escapeHtml(file.originalName);
+  if (isPreviewImage(file)) {
+    return `
+      <figure class="preview-item">
+        <figcaption>${name}</figcaption>
+        <img src="${href}" alt="${name}" loading="lazy" />
+      </figure>
+    `;
+  }
+
+  if (isEmbeddableFile(file)) {
+    return `
+      <figure class="preview-item">
+        <figcaption>${name}</figcaption>
+        <iframe src="${href}" title="${name}"></iframe>
+      </figure>
+    `;
+  }
+
+  return `
+    <figure class="preview-item">
+      <figcaption>${name}</figcaption>
+      <object data="${href}" type="${escapeHtml(file.mimetype || "application/octet-stream")}">
+        <p>当前浏览器不支持直接预览此类型文件，请在本机文件库中查看原文件。</p>
+      </object>
+    </figure>
+  `;
 }
 
 function filteredRecords() {
@@ -119,12 +254,10 @@ function renderRecords() {
 
   const token = encodeURIComponent(tokenInput.value.trim());
   const item = records[currentRecordIndex];
-      const attachments = (item.attachments || [])
-        .map((file) => {
-          const href = apiUrl(`/api/files/${encodeURIComponent(file.filename)}?token=${token}`);
-          return `<a href="${href}" target="_blank" rel="noreferrer">${escapeHtml(file.originalName)}</a>`;
-        })
-        .join("");
+  const detail = cardDetails[item.cardType] || { applicationRules: [], reviewRules: [], score: "" };
+  const checkedReviewers = reviewerList(item.reviewer);
+  const autoScore = detail.score || "";
+  const attachments = (item.attachments || []).map((file) => renderAttachmentPreview(file, token)).join("");
 
   recordsEl.innerHTML = `
         <article class="record" data-id="${escapeHtml(item.id)}">
@@ -141,9 +274,22 @@ function renderRecords() {
             <div><strong>岗位</strong>${escapeHtml(item.position)}</div>
             <div><strong>联系方式</strong>${escapeHtml(item.contact || "未填写")}</div>
             <div><strong>申报日期</strong>${escapeHtml(item.applicationDate)}</div>
-            <div><strong>最终分值</strong>${escapeHtml(item.score || "未评定")}</div>
+            <div><strong>成就卡分值</strong>${escapeHtml(autoScore ? `${autoScore}分` : "未配置")}</div>
             <div><strong>评审人</strong>${escapeHtml(item.reviewer || "未填写")}</div>
           </div>
+
+          <section class="review-reference">
+            <h3>评审参考</h3>
+            <p><strong>成就卡定义：</strong>${escapeHtml(detail.definition || "未配置")}</p>
+            <p><strong>申请细则：</strong></p>
+            ${renderRuleList(detail.applicationRules || [])}
+            <div class="meta-grid">
+              <div class="meta"><strong>周期</strong>${escapeHtml(detail.cycle || "未配置")}</div>
+              <div class="meta"><strong>分值</strong>${escapeHtml(autoScore ? `${autoScore}分` : "未配置")}</div>
+            </div>
+            <p><strong>评审细则：</strong></p>
+            ${renderRuleList(detail.reviewRules || [])}
+          </section>
 
           <div class="description-block">
             <strong>申报说明</strong>
@@ -151,8 +297,8 @@ function renderRecords() {
           </div>
 
           <div class="attachments">
-            <strong>附件</strong>
-            <div class="attachment-list">${attachments || "无附件"}</div>
+            <strong>附件预览</strong>
+            <div class="attachment-preview-list">${attachments || "无附件"}</div>
           </div>
 
           <form class="review-form">
@@ -166,13 +312,28 @@ function renderRecords() {
             </label>
             <label class="field">
               <span>分值</span>
-              <input name="score" type="number" min="0" step="1" value="${escapeHtml(item.score)}" />
+              <input name="score" type="number" value="${escapeHtml(autoScore)}" readonly />
             </label>
             <label class="field">
               <span>评审意见</span>
               <input name="reviewComment" value="${escapeHtml(item.reviewComment)}" />
             </label>
-            <label class="field">
+            <fieldset class="reviewer-checks">
+              <legend>评审人</legend>
+              ${reviewers
+                .map(
+                  (name) => `
+                    <label>
+                      <input type="checkbox" name="reviewer" value="${escapeHtml(name)}" ${
+                    checkedReviewers.includes(name) ? "checked" : ""
+                  } />
+                      <span>${escapeHtml(name)}</span>
+                    </label>
+                  `
+                )
+                .join("")}
+            </fieldset>
+            <label class="field reviewer-text" hidden>
               <span>评审人</span>
               <input name="reviewer" value="${escapeHtml(item.reviewer)}" />
             </label>
@@ -226,6 +387,11 @@ recordsEl.addEventListener("submit", async (event) => {
   const id = record.dataset.id;
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
+  const selectedReviewers = formData.getAll("reviewer");
+  payload.reviewer = selectedReviewers.join("、");
+  if (selectedReviewers.length > 3) {
+    payload.reviewStatus = "通过";
+  }
 
   try {
     const response = await fetch(apiUrl(`/api/submissions/${id}/review`), {
@@ -258,6 +424,18 @@ prevRecordBtn.addEventListener("click", () => {
 nextRecordBtn.addEventListener("click", () => {
   currentRecordIndex += 1;
   renderRecords();
+});
+
+recordsEl.addEventListener("change", (event) => {
+  if (event.target.name !== "reviewer") return;
+  const form = event.target.closest(".review-form");
+  const statusSelect = form.querySelector('select[name="reviewStatus"]');
+  const selectedCount = form.querySelectorAll('input[name="reviewer"]:checked').length;
+  if (selectedCount > 3) {
+    statusSelect.value = "通过";
+  } else if (statusSelect.value === "通过") {
+    statusSelect.value = "待评审";
+  }
 });
 
 [cardFilter, statusFilter, searchInput].forEach((input) => {
