@@ -173,11 +173,20 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     return res.status(400).json({ message: "请至少上传一个证明材料附件。" });
   }
 
+  const records = readSubmissions();
+  const normalizedApplicantName = applicantName.trim();
+  const duplicateRecord = records.find((record) => record.cardType === cardType && record.applicantName === normalizedApplicantName);
+
+  if (duplicateRecord) {
+    removeUploadedFiles(req.files);
+    return res.status(409).json({ message: `你已提交过「${cardType}」成就卡申请，请勿重复提交。` });
+  }
+
   const now = new Date().toISOString();
   const record = {
     id: crypto.randomUUID(),
     cardType,
-    applicantName: applicantName.trim(),
+    applicantName: normalizedApplicantName,
     department: department.trim(),
     position: position.trim(),
     contact: String(contact || "").trim(),
@@ -199,7 +208,6 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     }))
   };
 
-  const records = readSubmissions();
   records.unshift(record);
   writeSubmissions(records);
 
