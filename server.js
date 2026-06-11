@@ -169,10 +169,6 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     return res.status(400).json({ message: "请完整填写必填信息后再提交。" });
   }
 
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: "请至少上传一个证明材料附件。" });
-  }
-
   const records = readSubmissions();
   const normalizedApplicantName = applicantName.trim();
   const duplicateRecord = records.find((record) => record.cardType === cardType && record.applicantName === normalizedApplicantName);

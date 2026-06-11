@@ -284,12 +284,6 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  if (selectedFiles.length === 0) {
-    setMessage("请至少上传一个证明材料。", "error");
-    attachmentInput.focus();
-    return;
-  }
-
   const data = new FormData(form);
   data.delete("attachments");
   data.set("cardType", selectedCardType);
