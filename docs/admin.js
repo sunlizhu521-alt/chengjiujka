@@ -78,7 +78,7 @@ const cardDetails = {
   }
 };
 
-const reviewers = ["孙立柱", "惠李伟", "王斌", "任蒨", "蒋炳兰"];
+const reviewers = ["孙立柱", "王斌", "惠李伟", "任蒨", "蒋炳兰"];
 
 const tokenInput = document.querySelector("#adminToken");
 const cardFilter = document.querySelector("#cardFilter");
