@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡申请表</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611-16" />
+    <link rel="stylesheet" href="./styles.css?v=20260611-17" />
   </head>
   <body>
     <header class="topbar">
@@ -65,11 +65,21 @@
           <span>文字说明 <b>*</b></span>
           <textarea name="description" rows="7" required placeholder="请填写申请原因、具体事项、发生时间、过程、结果或影响。"></textarea>
         </label>
-        <label class="field">
+        <div class="field">
           <span>材料上传 <b>*</b></span>
-          <input id="attachmentInput" type="file" name="attachments" multiple />
-          <small>可分多次选择文件，后选文件会追加到已选材料中，不会覆盖之前文件；文件类型不限，单个文件最大 50MB，最多 10 个。</small>
-        </label>
+          <div class="upload-box">
+            <input id="attachmentInput" class="upload-input" type="file" name="attachments" multiple />
+            <label class="upload-trigger" for="attachmentInput">
+              <span class="upload-icon" aria-hidden="true">+</span>
+              <span class="upload-main">选择或继续添加材料</span>
+              <span class="upload-sub">文件、图片等类型不限，单个文件最大 50MB，最多 10 个</span>
+            </label>
+            <div class="upload-meta">
+              <span id="uploadCount">已选 0/10</span>
+              <span>后选文件会追加，不会覆盖之前文件</span>
+            </div>
+          </div>
+        </div>
         <div id="attachmentList" class="selected-files" aria-live="polite"></div>
 
         <h2>四、提交确认</h2>
@@ -107,6 +117,6 @@
     </main>
 
     <script src="./config.js?v=20260611-6"></script>
-    <script src="./app.js?v=20260611-15"></script>
+    <script src="./app.js?v=20260611-17"></script>
   </body>
 </html>

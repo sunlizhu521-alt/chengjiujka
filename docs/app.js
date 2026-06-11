@@ -92,6 +92,7 @@ const queryResult = document.querySelector("#queryResult");
 const dateInput = form.querySelector('input[name="applicationDate"]');
 const attachmentInput = document.querySelector("#attachmentInput");
 const attachmentList = document.querySelector("#attachmentList");
+const uploadCount = document.querySelector("#uploadCount");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
@@ -212,19 +213,22 @@ function fileKey(file) {
 }
 
 function renderSelectedFiles() {
+  uploadCount.textContent = `已选 ${selectedFiles.length}/10`;
+
   if (selectedFiles.length === 0) {
-    attachmentList.innerHTML = '<p class="empty-files">尚未选择材料。</p>';
+    attachmentList.innerHTML = '<p class="empty-files">尚未选择材料。点击上方区域添加文件。</p>';
     return;
   }
 
   attachmentList.innerHTML = `
-    <strong>已选材料（${selectedFiles.length}/10）</strong>
+    <strong>已选材料</strong>
     <ul>
       ${selectedFiles
         .map(
           (file, index) => `
             <li>
-              <span>${escapeHtml(file.name)} <em>${escapeHtml(formatFileSize(file.size))}</em></span>
+              <span class="file-index">${index + 1}</span>
+              <span class="file-name">${escapeHtml(file.name)} <em>${escapeHtml(formatFileSize(file.size))}</em></span>
               <button type="button" class="remove-file-btn" data-file-index="${index}">移除</button>
             </li>
           `

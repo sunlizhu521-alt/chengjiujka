@@ -178,6 +178,86 @@ small {
   color: var(--muted);
 }
 
+.upload-box {
+  border: 1px dashed #93b4dd;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 14px;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.upload-box:hover,
+.upload-box:focus-within {
+  border-color: var(--blue);
+  background: #eff6ff;
+}
+
+.upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.upload-trigger {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  grid-template-areas:
+    "icon main"
+    "icon sub";
+  gap: 2px 12px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.upload-icon {
+  grid-area: icon;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.upload-main {
+  grid-area: main;
+  color: #1e293b;
+  font-weight: 800;
+}
+
+.upload-sub {
+  grid-area: sub;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.upload-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #dbeafe;
+  margin-top: 12px;
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.upload-meta span:first-child {
+  color: var(--blue-dark);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .selected-files {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -199,9 +279,9 @@ small {
 }
 
 .selected-files li {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   border: 1px solid #dbe4ee;
   border-radius: 6px;
@@ -209,7 +289,20 @@ small {
   padding: 8px 10px;
 }
 
-.selected-files span {
+.file-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.file-name {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -791,8 +884,12 @@ small {
   }
 
   .selected-files li {
-    align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .selected-files .remove-file-btn {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .layout,
@@ -833,6 +930,10 @@ small {
   .summary-table-head {
     width: 100%;
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .upload-meta {
     flex-direction: column;
   }
 }
