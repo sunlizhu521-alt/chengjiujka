@@ -520,16 +520,16 @@ small {
 
 .review-form {
   display: grid;
-  grid-template-columns: 150px 100px minmax(180px, 1fr) minmax(260px, 1.2fr) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(520px, 1.8fr) auto;
   gap: 12px;
   align-items: end;
   margin-top: 14px;
 }
 
 .reviewer-checks {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -543,11 +543,13 @@ small {
 }
 
 .reviewer-checks label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  flex-direction: row-reverse;
+  gap: 5px;
   color: #334155;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .reviewer-checks input {
@@ -581,9 +583,13 @@ small {
   .card-choice-group,
   .meta-grid,
   .summary-row,
-  .record-grid,
-  .reviewer-checks {
+  .record-grid {
     grid-template-columns: 1fr;
+  }
+
+  .reviewer-checks {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .admin-link {

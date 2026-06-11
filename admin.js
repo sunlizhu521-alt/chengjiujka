@@ -303,18 +303,6 @@ function renderRecords() {
 
           <form class="review-form">
             <label class="field">
-              <span>评审状态</span>
-              <select name="reviewStatus">
-                ${["待评审", "通过", "驳回", "需补充"]
-                  .map((status) => `<option ${status === item.reviewStatus ? "selected" : ""}>${status}</option>`)
-                  .join("")}
-              </select>
-            </label>
-            <label class="field">
-              <span>分值</span>
-              <input name="score" type="number" value="${escapeHtml(autoScore)}" readonly />
-            </label>
-            <label class="field">
               <span>评审意见</span>
               <input name="reviewComment" value="${escapeHtml(item.reviewComment)}" />
             </label>
@@ -333,10 +321,6 @@ function renderRecords() {
                 )
                 .join("")}
             </fieldset>
-            <label class="field reviewer-text" hidden>
-              <span>评审人</span>
-              <input name="reviewer" value="${escapeHtml(item.reviewer)}" />
-            </label>
             <button type="submit">保存</button>
           </form>
         </article>
@@ -388,10 +372,11 @@ recordsEl.addEventListener("submit", async (event) => {
   const formData = new FormData(form);
   const payload = Object.fromEntries(formData.entries());
   const selectedReviewers = formData.getAll("reviewer");
+  const currentRecord = allRecords.find((item) => item.id === id);
+  const currentDetail = currentRecord ? cardDetails[currentRecord.cardType] : null;
   payload.reviewer = selectedReviewers.join("、");
-  if (selectedReviewers.length > 3) {
-    payload.reviewStatus = "通过";
-  }
+  payload.score = String((currentDetail || {}).score || "");
+  payload.reviewStatus = selectedReviewers.length > 3 ? "通过" : "待评审";
 
   try {
     const response = await fetch(apiUrl(`/api/submissions/${id}/review`), {
@@ -429,13 +414,8 @@ nextRecordBtn.addEventListener("click", () => {
 recordsEl.addEventListener("change", (event) => {
   if (event.target.name !== "reviewer") return;
   const form = event.target.closest(".review-form");
-  const statusSelect = form.querySelector('select[name="reviewStatus"]');
   const selectedCount = form.querySelectorAll('input[name="reviewer"]:checked').length;
-  if (selectedCount > 3) {
-    statusSelect.value = "通过";
-  } else if (statusSelect.value === "通过") {
-    statusSelect.value = "待评审";
-  }
+  form.classList.toggle("is-auto-passed", selectedCount > 3);
 });
 
 [cardFilter, statusFilter, searchInput].forEach((input) => {
