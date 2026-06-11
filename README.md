@@ -75,7 +75,7 @@ npm start
 默认评审口令：
 
 ```text
-chengjiuka-admin
+3.1415926
 ```
 
 正式部署时请设置环境变量：

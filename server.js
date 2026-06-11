@@ -6,7 +6,7 @@ const multer = require("multer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "chengjiuka-admin";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "3.1415926";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "*";
 
 const rootDir = __dirname;
