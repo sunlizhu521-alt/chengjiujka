@@ -40,12 +40,26 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.static(publicDir));
 
+function normalizeOriginalName(name) {
+  const rawName = String(name || "");
+  const decodedName = Buffer.from(rawName, "latin1").toString("utf8");
+  const replacementCount = (decodedName.match(/\uFFFD/g) || []).length;
+  const looksMojibake = /[\u0080-\u00FF]/.test(rawName);
+
+  if (decodedName && replacementCount === 0 && looksMojibake) {
+    return decodedName;
+  }
+
+  return rawName;
+}
+
 const storage = multer.diskStorage({
   destination: uploadDir,
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const originalName = normalizeOriginalName(file.originalname);
+    const ext = path.extname(originalName);
     const safeBase = path
-      .basename(file.originalname, ext)
+      .basename(originalName, ext)
       .replace(/[^\w\u4e00-\u9fa5-]+/g, "_")
       .slice(0, 60);
     const unique = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}`;
@@ -73,6 +87,16 @@ function writeSubmissions(records) {
   fs.writeFileSync(submissionsFile, JSON.stringify(records, null, 2), "utf8");
 }
 
+function normalizeAttachmentNames(record) {
+  return {
+    ...record,
+    attachments: (record.attachments || []).map((file) => ({
+      ...file,
+      originalName: normalizeOriginalName(file.originalName)
+    }))
+  };
+}
+
 function localDateString(date = new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
@@ -83,17 +107,18 @@ function hashQuerySecret(secret) {
 }
 
 function publicReviewResult(record) {
+  const normalizedRecord = normalizeAttachmentNames(record);
   return {
-    id: record.id,
-    cardType: record.cardType,
-    applicantName: record.applicantName,
-    applicationDate: record.applicationDate,
-    submittedAt: record.submittedAt,
-    reviewStatus: record.reviewStatus,
-    score: record.score,
-    reviewComment: record.reviewComment,
-    reviewer: record.reviewer,
-    reviewDate: record.reviewDate
+    id: normalizedRecord.id,
+    cardType: normalizedRecord.cardType,
+    applicantName: normalizedRecord.applicantName,
+    applicationDate: normalizedRecord.applicationDate,
+    submittedAt: normalizedRecord.submittedAt,
+    reviewStatus: normalizedRecord.reviewStatus,
+    score: normalizedRecord.score,
+    reviewComment: normalizedRecord.reviewComment,
+    reviewer: normalizedRecord.reviewer,
+    reviewDate: normalizedRecord.reviewDate
   };
 }
 
@@ -167,7 +192,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     reviewer: "",
     reviewDate: "",
     attachments: req.files.map((file) => ({
-      originalName: file.originalname,
+      originalName: normalizeOriginalName(file.originalname),
       filename: file.filename,
       size: file.size,
       mimetype: file.mimetype
@@ -198,7 +223,7 @@ app.post("/api/results/query", (req, res) => {
 });
 
 app.get("/api/submissions", requireAdmin, (req, res) => {
-  res.json(readSubmissions());
+  res.json(readSubmissions().map(normalizeAttachmentNames));
 });
 
 app.patch("/api/submissions/:id/review", requireAdmin, (req, res) => {
@@ -221,7 +246,7 @@ app.patch("/api/submissions/:id/review", requireAdmin, (req, res) => {
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
 
-  res.json(record);
+  res.json(normalizeAttachmentNames(record));
 });
 
 app.get("/api/files/:filename", requireAdmin, (req, res) => {
@@ -234,7 +259,7 @@ app.get("/api/files/:filename", requireAdmin, (req, res) => {
   const attachment = records
     .flatMap((record) => record.attachments || [])
     .find((file) => file.filename === safeName);
-  const displayName = attachment ? attachment.originalName : safeName;
+  const displayName = attachment ? normalizeOriginalName(attachment.originalName) : safeName;
 
   if (req.query.download === "1") {
     return res.download(filePath, displayName);
