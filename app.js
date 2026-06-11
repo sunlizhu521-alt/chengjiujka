@@ -62,7 +62,6 @@ function renderCardChoices() {
             aria-pressed="${isSelected}"
           >
             <span>${escapeHtml(name)}</span>
-            <em>${isOpen ? "已开放" : "暂未开放"}</em>
           </button>
         `;
       })
