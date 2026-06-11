@@ -83,13 +83,14 @@ const cardDetails = {
   }
 };
 
-const cardType = document.querySelector("#cardType");
+const cardButtons = Array.from(document.querySelectorAll(".card-choice"));
 const cardInfo = document.querySelector("#cardInfo");
 const form = document.querySelector("#applicationForm");
 const message = document.querySelector("#message");
 const dateInput = form.querySelector('input[name="applicationDate"]');
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
+let selectedCardType = "";
 
 dateInput.valueAsDate = new Date();
 
@@ -108,12 +109,12 @@ function escapeHtml(value) {
 function renderCardInfo(name) {
   const detail = cardDetails[name];
   if (!detail) {
-    cardInfo.className = "card-info is-empty";
-    cardInfo.innerHTML = "<p>请选择要申请的成就卡，系统会显示对应的项目说明、周期、分值和材料要求。</p>";
+    cardInfo.hidden = true;
+    cardInfo.innerHTML = "";
     return;
   }
 
-  cardInfo.className = "card-info";
+  cardInfo.hidden = false;
   cardInfo.innerHTML = `
     <h3>${escapeHtml(name)}</h3>
     <p><strong>设置目的：</strong>${escapeHtml(detail.purpose)}</p>
@@ -129,6 +130,25 @@ function renderCardInfo(name) {
   `;
 }
 
+function selectCard(name) {
+  selectedCardType = name;
+  cardButtons.forEach((button) => {
+    const isSelected = button.dataset.cardType === name;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  });
+  renderCardInfo(name);
+}
+
+function clearCardSelection() {
+  selectedCardType = "";
+  cardButtons.forEach((button) => {
+    button.classList.remove("is-selected");
+    button.setAttribute("aria-pressed", "false");
+  });
+  renderCardInfo("");
+}
+
 function setMessage(text, type) {
   message.textContent = text;
   message.className = `message ${type || ""}`;
@@ -142,16 +162,18 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
-cardType.addEventListener("change", () => {
-  renderCardInfo(cardType.value);
+cardButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectCard(button.dataset.cardType);
+  });
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  if (!cardType.value) {
+  if (!selectedCardType) {
     setMessage("请先选择申报成就卡项目。", "error");
-    cardType.focus();
+    cardButtons[0]?.focus();
     return;
   }
 
@@ -161,7 +183,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   const data = new FormData(form);
-  data.set("cardType", cardType.value);
+  data.set("cardType", selectedCardType);
 
   const submitBtn = form.querySelector('button[type="submit"]');
   submitBtn.disabled = true;
@@ -177,9 +199,8 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(result.message || "提交失败");
 
     form.reset();
-    cardType.value = "";
     dateInput.valueAsDate = new Date();
-    renderCardInfo("");
+    clearCardSelection();
     setMessage(`${result.message} 编号：${result.id}`, "success");
   } catch (error) {
     setMessage(error.message, "error");

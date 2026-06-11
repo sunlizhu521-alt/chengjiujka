@@ -18,21 +18,18 @@
     <main class="layout">
       <section class="panel">
         <h2>一、申报项目</h2>
-        <label class="field">
+        <div class="field">
           <span>申报成就卡项目 <b>*</b></span>
-          <select id="cardType" name="cardType" required>
-            <option value="">请选择</option>
-            <option>奋斗者</option>
-            <option>分享达人</option>
-            <option>业绩之王</option>
-            <option>文化先锋</option>
-            <option>最美工位</option>
-          </select>
-        </label>
+          <div id="cardChoices" class="card-choice-group" role="radiogroup" aria-label="申报成就卡项目">
+            <button class="card-choice" type="button" data-card-type="奋斗者" aria-pressed="false">奋斗者</button>
+            <button class="card-choice" type="button" data-card-type="分享达人" aria-pressed="false">分享达人</button>
+            <button class="card-choice" type="button" data-card-type="业绩之王" aria-pressed="false">业绩之王</button>
+            <button class="card-choice" type="button" data-card-type="文化先锋" aria-pressed="false">文化先锋</button>
+            <button class="card-choice" type="button" data-card-type="最美工位" aria-pressed="false">最美工位</button>
+          </div>
+        </div>
 
-        <article id="cardInfo" class="card-info is-empty">
-          <p>请选择要申请的成就卡，系统会显示对应的项目说明、周期、分值和材料要求。</p>
-        </article>
+        <article id="cardInfo" class="card-info" hidden></article>
       </section>
 
       <form id="applicationForm" class="panel form-panel">
