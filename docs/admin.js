@@ -78,7 +78,7 @@ const cardDetails = {
   }
 };
 
-const reviewers = ["惠李伟", "王斌", "孙立柱", "任蒨", "蒋炳兰"];
+const reviewers = ["孙立柱", "惠李伟", "王斌", "任蒨", "蒋炳兰"];
 
 const tokenInput = document.querySelector("#adminToken");
 const cardFilter = document.querySelector("#cardFilter");
@@ -306,8 +306,8 @@ function renderRecords() {
               <span>评审意见</span>
               <input name="reviewComment" value="${escapeHtml(item.reviewComment)}" />
             </label>
-            <fieldset class="reviewer-checks">
-              <legend>评审人</legend>
+            <div class="reviewer-checks" role="group" aria-label="评审人">
+              <strong>评审人：</strong>
               ${reviewers
                 .map(
                   (name) => `
@@ -320,7 +320,7 @@ function renderRecords() {
                   `
                 )
                 .join("")}
-            </fieldset>
+            </div>
             <button type="submit">保存</button>
           </form>
         </article>

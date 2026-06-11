@@ -534,10 +534,10 @@ small {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 10px;
+  white-space: nowrap;
 }
 
-.reviewer-checks legend {
-  padding: 0 4px;
+.reviewer-checks strong {
   color: #334155;
   font-weight: 700;
 }
@@ -590,6 +590,7 @@ small {
   .reviewer-checks {
     align-items: flex-start;
     flex-direction: column;
+    white-space: normal;
   }
 
   .admin-link {
