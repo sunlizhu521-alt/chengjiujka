@@ -1,4 +1,2 @@
-// GitHub Pages 固定入口使用的后端地址。
-// 部署后端后，把下面的空字符串改成后端域名，例如：
-// window.CHENGJIUKA_API_BASE = "https://your-api.example.com";
-window.CHENGJIUKA_API_BASE = "";
+// 本机临时测试地址。仅你的电脑可用，同事手机或其他电脑无法使用 localhost。
+window.CHENGJIUKA_API_BASE = "http://localhost:3000";
