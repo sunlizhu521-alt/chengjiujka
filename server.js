@@ -78,6 +78,25 @@ function localDateString(date = new Date()) {
   return local.toISOString().slice(0, 10);
 }
 
+function hashQuerySecret(secret) {
+  return crypto.createHash("sha256").update(String(secret || "")).digest("hex");
+}
+
+function publicReviewResult(record) {
+  return {
+    id: record.id,
+    cardType: record.cardType,
+    applicantName: record.applicantName,
+    applicationDate: record.applicationDate,
+    submittedAt: record.submittedAt,
+    reviewStatus: record.reviewStatus,
+    score: record.score,
+    reviewComment: record.reviewComment,
+    reviewer: record.reviewer,
+    reviewDate: record.reviewDate
+  };
+}
+
 function requireAdmin(req, res, next) {
   const token = req.get("x-admin-token") || req.query.token;
   if (token !== ADMIN_TOKEN) {
@@ -105,6 +124,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     contact,
     applicationDate,
     description,
+    querySecret,
     commitment
   } = req.body;
 
@@ -115,10 +135,11 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     ["position", position],
     ["applicationDate", applicationDate],
     ["description", description],
+    ["querySecret", querySecret],
     ["commitment", commitment]
   ].filter(([, value]) => !String(value || "").trim());
 
-  if (requiredMissing.length > 0 || !cardTypes.has(cardType)) {
+  if (requiredMissing.length > 0 || !cardTypes.has(cardType) || String(querySecret || "").trim().length < 4) {
     removeUploadedFiles(req.files);
     return res.status(400).json({ message: "请完整填写必填信息后再提交。" });
   }
@@ -137,6 +158,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     contact: String(contact || "").trim(),
     applicationDate,
     description: description.trim(),
+    querySecretHash: hashQuerySecret(querySecret.trim()),
     commitment,
     submittedAt: now,
     reviewStatus: "待评审",
@@ -157,6 +179,22 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
   writeSubmissions(records);
 
   res.status(201).json({ id: record.id, message: "提交成功，评审小组会统一评审。" });
+});
+
+app.post("/api/results/query", (req, res) => {
+  const applicantName = String(req.body.applicantName || "").trim();
+  const querySecret = String(req.body.querySecret || "").trim();
+
+  if (!applicantName || !querySecret) {
+    return res.status(400).json({ message: "请输入申报人姓名和查询秘钥。" });
+  }
+
+  const secretHash = hashQuerySecret(querySecret);
+  const records = readSubmissions()
+    .filter((record) => record.applicantName === applicantName && record.querySecretHash === secretHash)
+    .map(publicReviewResult);
+
+  res.json({ records });
 });
 
 app.get("/api/submissions", requireAdmin, (req, res) => {

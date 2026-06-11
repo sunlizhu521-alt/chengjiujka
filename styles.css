@@ -295,6 +295,7 @@ small {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-top: 14px;
 }
 
 .checkline input {
@@ -321,6 +322,75 @@ small {
 
 .message.error {
   color: var(--red);
+}
+
+.query-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.query-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.query-result {
+  display: grid;
+  gap: 12px;
+}
+
+.result-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.result-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.result-card-head strong {
+  font-size: 18px;
+}
+
+.result-status {
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 3px 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.result-grid div {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+}
+
+.result-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .toolbar {
@@ -656,7 +726,8 @@ small {
 
   .layout,
   .toolbar,
-  .review-form {
+  .review-form,
+  .query-form {
     grid-template-columns: 1fr;
   }
 
@@ -664,7 +735,8 @@ small {
   .card-choice-group,
   .meta-grid,
   .summary-row,
-  .record-grid {
+  .record-grid,
+  .result-grid {
     grid-template-columns: 1fr;
   }
 

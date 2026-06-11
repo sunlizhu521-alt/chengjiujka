@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡申请表</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260611-15" />
   </head>
   <body>
     <header class="topbar">
@@ -70,6 +70,11 @@
         <div id="attachmentList" class="selected-files" aria-live="polite"></div>
 
         <h2>四、提交确认</h2>
+        <label class="field">
+          <span>设置查询秘钥 <b>*</b></span>
+          <input type="password" name="querySecret" autocomplete="new-password" required minlength="4" placeholder="请设置至少4位秘钥，用于后期查询评审结果" />
+          <small>请记住该秘钥，后期可使用“申报人姓名 + 查询秘钥”查看评审结果。</small>
+        </label>
         <label class="checkline">
           <input type="checkbox" name="commitment" value="我确认" required />
           <span>本人承诺以上申报内容真实有效</span>
@@ -80,9 +85,25 @@
           <p id="message" class="message" role="status"></p>
         </div>
       </form>
+
+      <section class="panel query-panel">
+        <h2>五、查询评审结果</h2>
+        <form id="resultQueryForm" class="query-form">
+          <label class="field">
+            <span>申报人姓名 <b>*</b></span>
+            <input name="applicantName" autocomplete="name" required />
+          </label>
+          <label class="field">
+            <span>查询秘钥 <b>*</b></span>
+            <input type="password" name="querySecret" autocomplete="current-password" required />
+          </label>
+          <button type="submit">查询结果</button>
+        </form>
+        <div id="queryResult" class="query-result" aria-live="polite"></div>
+      </section>
     </main>
 
     <script src="./config.js?v=20260611-6"></script>
-    <script src="./app.js?v=20260611-6"></script>
+    <script src="./app.js?v=20260611-15"></script>
   </body>
 </html>

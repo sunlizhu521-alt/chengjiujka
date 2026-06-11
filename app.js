@@ -87,6 +87,8 @@ const cardButtons = Array.from(document.querySelectorAll(".card-choice"));
 const cardInfo = document.querySelector("#cardInfo");
 const form = document.querySelector("#applicationForm");
 const message = document.querySelector("#message");
+const resultQueryForm = document.querySelector("#resultQueryForm");
+const queryResult = document.querySelector("#queryResult");
 const dateInput = form.querySelector('input[name="applicationDate"]');
 const attachmentInput = document.querySelector("#attachmentInput");
 const attachmentList = document.querySelector("#attachmentList");
@@ -155,6 +157,44 @@ function clearCardSelection() {
 function setMessage(text, type) {
   message.textContent = text;
   message.className = `message ${type || ""}`;
+}
+
+function setQueryResult(content, type = "") {
+  queryResult.className = `query-result ${type}`;
+  queryResult.innerHTML = content;
+}
+
+function formatDateTime(value) {
+  if (!value) return "未填写";
+  return new Date(value).toLocaleString("zh-CN", { hour12: false });
+}
+
+function renderResultRecords(records) {
+  if (!records.length) {
+    return '<p class="empty-files">未查询到匹配的申请记录，请核对姓名和秘钥。</p>';
+  }
+
+  return records
+    .map(
+      (item) => `
+        <article class="result-card">
+          <div class="result-card-head">
+            <strong>${escapeHtml(item.cardType)}</strong>
+            <span class="result-status">${escapeHtml(item.reviewStatus || "待评审")}</span>
+          </div>
+          <div class="result-grid">
+            <div><span>申请编号</span>${escapeHtml(item.id)}</div>
+            <div><span>申报日期</span>${escapeHtml(item.applicationDate || "未填写")}</div>
+            <div><span>提交时间</span>${escapeHtml(formatDateTime(item.submittedAt))}</div>
+            <div><span>评审日期</span>${escapeHtml(item.reviewDate || "暂未评审")}</div>
+            <div><span>成就卡分值</span>${escapeHtml(item.score ? `${item.score}分` : "暂未评定")}</div>
+            <div><span>是否通过投票</span>${escapeHtml(item.reviewer || "暂未填写")}</div>
+          </div>
+          <p><strong>评审意见：</strong>${escapeHtml(item.reviewComment || "暂无评审意见")}</p>
+        </article>
+      `
+    )
+    .join("");
 }
 
 function formatFileSize(size) {
@@ -276,12 +316,43 @@ form.addEventListener("submit", async (event) => {
     selectedFiles = [];
     renderSelectedFiles();
     clearCardSelection();
-    setMessage(`${result.message} 编号：${result.id}`, "success");
+    setMessage(`${result.message} 编号：${result.id}。请妥善保存查询秘钥。`, "success");
   } catch (error) {
     setMessage(error.message, "error");
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = "提交申请";
+  }
+});
+
+resultQueryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!hasBackend()) {
+    setQueryResult('<p class="message error">当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。</p>', "error");
+    return;
+  }
+
+  const submitBtn = resultQueryForm.querySelector('button[type="submit"]');
+  const payload = Object.fromEntries(new FormData(resultQueryForm).entries());
+  submitBtn.disabled = true;
+  submitBtn.textContent = "查询中...";
+  setQueryResult("", "");
+
+  try {
+    const response = await fetch(apiUrl("/api/results/query"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "查询失败");
+    setQueryResult(renderResultRecords(result.records || []), result.records && result.records.length ? "success" : "");
+  } catch (error) {
+    setQueryResult(`<p class="message error">${escapeHtml(error.message)}</p>`, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "查询结果";
   }
 });
 
