@@ -307,7 +307,7 @@ function renderRecords() {
               <input name="reviewComment" value="${escapeHtml(item.reviewComment)}" />
             </label>
             <div class="reviewer-checks" role="group" aria-label="评审人">
-              <strong>评审人：</strong>
+              <strong>评审是否通过：</strong>
               ${reviewers
                 .map(
                   (name) => `
