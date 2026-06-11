@@ -1,4 +1,5 @@
 let allRecords = [];
+let currentRecordIndex = 0;
 
 const tokenInput = document.querySelector("#adminToken");
 const cardFilter = document.querySelector("#cardFilter");
@@ -94,13 +95,20 @@ function renderRecords() {
   renderSummary(records);
 
   if (records.length === 0) {
+    currentRecordIndex = 0;
     recordsEl.innerHTML = '<section class="record"><p>暂无符合条件的记录。</p></section>';
     return;
   }
 
+  if (currentRecordIndex >= records.length) {
+    currentRecordIndex = records.length - 1;
+  }
+  if (currentRecordIndex < 0) {
+    currentRecordIndex = 0;
+  }
+
   const token = encodeURIComponent(tokenInput.value.trim());
-  recordsEl.innerHTML = records
-    .map((item) => {
+  const item = records[currentRecordIndex];
       const attachments = (item.attachments || [])
         .map((file) => {
           const href = apiUrl(`/api/files/${encodeURIComponent(file.filename)}?token=${token}`);
@@ -108,7 +116,12 @@ function renderRecords() {
         })
         .join("");
 
-      return `
+  recordsEl.innerHTML = `
+        <nav class="record-pager" aria-label="记录切换">
+          <button type="button" id="prevRecordBtn" ${currentRecordIndex === 0 ? "disabled" : ""}>上一个</button>
+          <span>第 ${currentRecordIndex + 1} 条，共 ${records.length} 条</span>
+          <button type="button" id="nextRecordBtn" ${currentRecordIndex === records.length - 1 ? "disabled" : ""}>下一个</button>
+        </nav>
         <article class="record" data-id="${escapeHtml(item.id)}">
           <div class="record-head">
             <div>
@@ -162,8 +175,6 @@ function renderRecords() {
           </form>
         </article>
       `;
-    })
-    .join("");
 }
 
 async function loadRecords() {
@@ -223,6 +234,10 @@ recordsEl.addEventListener("submit", async (event) => {
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "保存失败");
     allRecords = allRecords.map((item) => (item.id === id ? result : item));
+    const records = filteredRecords();
+    if (currentRecordIndex >= records.length) {
+      currentRecordIndex = Math.max(records.length - 1, 0);
+    }
     renderRecords();
     setAdminMessage("评审结果已保存。", "success");
   } catch (error) {
@@ -230,8 +245,23 @@ recordsEl.addEventListener("submit", async (event) => {
   }
 });
 
+recordsEl.addEventListener("click", (event) => {
+  if (event.target.id === "prevRecordBtn") {
+    currentRecordIndex -= 1;
+    renderRecords();
+  }
+
+  if (event.target.id === "nextRecordBtn") {
+    currentRecordIndex += 1;
+    renderRecords();
+  }
+});
+
 [cardFilter, statusFilter, searchInput].forEach((input) => {
-  input.addEventListener("input", renderRecords);
+  input.addEventListener("input", () => {
+    currentRecordIndex = 0;
+    renderRecords();
+  });
 });
 
 loadBtn.addEventListener("click", loadRecords);

@@ -301,6 +301,29 @@ small {
   gap: 16px;
 }
 
+.record-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.record-pager span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.record-pager button:disabled {
+  cursor: not-allowed;
+  background: #cbd5e1;
+  color: #64748b;
+}
+
 .record {
   border: 1px solid var(--line);
   border-radius: 8px;
