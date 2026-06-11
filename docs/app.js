@@ -88,7 +88,8 @@ const cardInfo = document.querySelector("#cardInfo");
 const form = document.querySelector("#applicationForm");
 const message = document.querySelector("#message");
 const dateInput = form.querySelector('input[name="applicationDate"]');
-const configuredApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
+const localTestApiBase = "http://localhost:3000";
+const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
 let selectedCardType = "";
 

@@ -8,7 +8,8 @@ const loadBtn = document.querySelector("#loadBtn");
 const recordsEl = document.querySelector("#records");
 const summaryRow = document.querySelector("#summaryRow");
 const adminMessage = document.querySelector("#adminMessage");
-const configuredApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
+const localTestApiBase = "http://localhost:3000";
+const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
 
 tokenInput.value = localStorage.getItem("chengjiukaAdminToken") || "";
