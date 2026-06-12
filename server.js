@@ -520,6 +520,10 @@ app.patch("/api/submissions/:id/review", requireReviewUser, (req, res) => {
   }
 
   record.reviewVotes = record.reviewVotes || {};
+  if (record.reviewVotes[req.authUser.name]) {
+    return res.status(409).json({ message: "你已提交过本条申请的评审，不能重复提交或修改。" });
+  }
+
   record.reviewVotes[req.authUser.name] = {
     status: reviewStatus,
     comment: reviewComment,

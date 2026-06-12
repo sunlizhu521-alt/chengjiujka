@@ -343,7 +343,9 @@ function renderQuerySecretLookup(records, applicantName) {
 function renderReviewForm(item) {
   const filesReady = (item.feedbackFiles || []).length > 0;
   const myVote = ((item.reviewVotes || {})[currentUser.name] || {});
-  const disabledAttr = filesReady ? "" : "disabled";
+  const hasSubmittedVote = Boolean(myVote.status);
+  const disabledAttr = filesReady && !hasSubmittedVote ? "" : "disabled";
+  const submitButtonText = hasSubmittedVote ? "已提交评审" : "保存我的评审";
 
   return `
     <section class="review-feedback">
@@ -367,7 +369,7 @@ function renderReviewForm(item) {
           <span>评审意见</span>
           <textarea name="reviewComment" rows="2" ${disabledAttr}>${escapeHtml(myVote.comment || "")}</textarea>
         </label>
-        <button type="submit" ${disabledAttr}>保存我的评审</button>
+        <button type="submit" ${disabledAttr}>${submitButtonText}</button>
       </form>
     </section>
   `;
