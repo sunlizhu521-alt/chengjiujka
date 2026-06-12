@@ -301,7 +301,8 @@ form.addEventListener("submit", async (event) => {
     selectedFiles = [];
     renderSelectedFiles();
     clearCardSelection();
-    setMessage(`${result.message} 编号：${result.id}。请妥善保存查询秘钥。`, "success");
+    const secretTip = result.querySecretInherited ? "已沿用你之前设置的查询秘钥。" : "请妥善保存查询秘钥。";
+    setMessage(`${result.message} 编号：${result.id}。${secretTip}`, "success");
   } catch (error) {
     setMessage(error.message, "error");
   } finally {

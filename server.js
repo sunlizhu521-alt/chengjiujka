@@ -430,23 +430,43 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     ["position", position],
     ["applicationDate", applicationDate],
     ["description", description],
-    ["querySecret", querySecret],
     ["commitment", commitment]
   ].filter(([, value]) => !String(value || "").trim());
 
-  if (requiredMissing.length > 0 || !cardTypes.has(cardType) || String(querySecret || "").trim().length < 4) {
+  if (requiredMissing.length > 0 || !cardTypes.has(cardType)) {
     removeUploadedFiles(req.files);
     return res.status(400).json({ message: "请完整填写必填信息后再提交。" });
   }
 
   const records = readSubmissions();
   const normalizedApplicantName = applicantName.trim();
+  const normalizedQuerySecret = String(querySecret || "").trim();
+  const previousSecretRecord = records.find(
+    (record) => record.applicantName === normalizedApplicantName && record.querySecretHash
+  );
   const duplicateRecord = records.find((record) => record.cardType === cardType && record.applicantName === normalizedApplicantName);
 
   if (duplicateRecord) {
     removeUploadedFiles(req.files);
     return res.status(409).json({ message: `你已提交过「${cardType}」成就卡申请，请勿重复提交。` });
   }
+
+  if (!normalizedQuerySecret && !previousSecretRecord) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "首次申请请设置至少4位查询秘钥，后续申请可不填并沿用。" });
+  }
+
+  if (normalizedQuerySecret && normalizedQuerySecret.length < 4) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "查询秘钥至少需要 4 位。" });
+  }
+
+  const effectiveQuerySecretHash = normalizedQuerySecret
+    ? hashSecret(normalizedQuerySecret)
+    : previousSecretRecord.querySecretHash;
+  const effectiveQuerySecretPlain = normalizedQuerySecret
+    ? normalizedQuerySecret
+    : previousSecretRecord.querySecretPlain || "";
 
   const now = new Date().toISOString();
   const record = {
@@ -458,8 +478,9 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     contact: String(contact || "").trim(),
     applicationDate,
     description: description.trim(),
-    querySecretHash: hashSecret(querySecret.trim()),
-    querySecretPlain: querySecret.trim(),
+    querySecretHash: effectiveQuerySecretHash,
+    querySecretPlain: effectiveQuerySecretPlain,
+    querySecretInherited: !normalizedQuerySecret,
     commitment,
     submittedAt: now,
     reviewStatus: "待评审",
@@ -479,7 +500,11 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
   records.unshift(record);
   writeSubmissions(records);
 
-  res.status(201).json({ id: record.id, message: "提交成功，评审小组会统一评审。" });
+  res.status(201).json({
+    id: record.id,
+    querySecretInherited: record.querySecretInherited,
+    message: "提交成功，评审小组会统一评审。"
+  });
 });
 
 app.post("/api/results/query", (req, res) => {

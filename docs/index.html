@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡申请</title>
-    <link rel="stylesheet" href="./styles.css?v=20260612-03" />
+    <link rel="stylesheet" href="./styles.css?v=20260612-04" />
   </head>
   <body>
     <header class="topbar">
@@ -81,9 +81,9 @@
 
         <h2>四、提交确认</h2>
         <label class="field">
-          <span>设置查询秘钥 <b>*</b></span>
-          <input type="password" name="querySecret" autocomplete="new-password" required minlength="4" placeholder="请设置至少4位秘钥，用于后期查询评审结果" />
-          <small>请记住该秘钥，后期可使用“申报人姓名 + 查询秘钥”查看评审结果。</small>
+          <span>设置查询秘钥</span>
+          <input type="password" name="querySecret" autocomplete="new-password" minlength="4" placeholder="首次申请请设置至少4位秘钥，已申请过可不填" />
+          <small>首次申请必填；同一姓名后续申请可不填，系统会沿用之前设置的查询秘钥。</small>
         </label>
         <label class="checkline">
           <input type="checkbox" name="commitment" value="我确认" required />
@@ -115,6 +115,6 @@
 
     <script src="./config.js?v=20260611-13"></script>
     <script src="./card-data.js?v=20260611-24"></script>
-    <script src="./app.js?v=20260612-03"></script>
+    <script src="./app.js?v=20260612-04"></script>
   </body>
 </html>
