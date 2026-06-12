@@ -373,6 +373,32 @@ function renderReviewForm(item) {
   `;
 }
 
+function renderPublicResultConfirm(item) {
+  if (!currentUser || currentUser.role !== "admin") return "";
+  const publishedAt = item.resultPublishedAt ? `发布时间：${formatDate(item.resultPublishedAt)}` : "暂未发布";
+
+  return `
+    <section class="public-result-confirm">
+      <h3>最终展示确认</h3>
+      <p>这里填写的是员工查询时看到的最终评审意见，不显示评审人和评审过程。</p>
+      <form class="public-result-form">
+        <label class="field review-comment-field">
+          <span>最终展示评审意见 <b>*</b></span>
+          <textarea name="finalPublicComment" rows="3" placeholder="请填写给员工看的最终评审意见。">${escapeHtml(item.finalPublicComment || "")}</textarea>
+        </label>
+        <label class="checkline public-result-check">
+          <input type="checkbox" name="resultPublished" value="1" ${item.resultPublished ? "checked" : ""} />
+          <span>确认展示给申报人查询</span>
+        </label>
+        <div class="public-result-actions">
+          <button type="submit">保存最终展示</button>
+          <small>${escapeHtml(publishedAt)}</small>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
 function renderRecords() {
   const records = filteredRecords();
   renderSummary(records);
@@ -439,6 +465,7 @@ function renderRecords() {
 
       ${renderFeedbackFiles(item)}
       ${renderReviewForm(item)}
+      ${renderPublicResultConfirm(item)}
       ${renderQuerySecretAdmin(item)}
     </article>
   `;
@@ -619,6 +646,29 @@ recordsEl.addEventListener("submit", async (event) => {
       if (!response.ok) throw new Error(result.message || "重置失败");
       replaceRecord(result.record);
       setAdminMessage("查询秘钥已重置，请把新秘钥告知员工本人。", "success");
+    } catch (error) {
+      setAdminMessage(error.message, "error");
+    }
+    return;
+  }
+
+  if (event.target.classList.contains("public-result-form")) {
+    const formData = new FormData(event.target);
+    const payload = {
+      finalPublicComment: String(formData.get("finalPublicComment") || "").trim(),
+      resultPublished: formData.get("resultPublished") === "1"
+    };
+
+    try {
+      const response = await fetch(apiUrl(`/api/submissions/${id}/public-result`), {
+        method: "PATCH",
+        headers: authHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "保存失败");
+      replaceRecord(result);
+      setAdminMessage(payload.resultPublished ? "最终评审结果已发布给申报人查询。" : "最终展示意见已保存，暂未发布。", "success");
     } catch (error) {
       setAdminMessage(error.message, "error");
     }

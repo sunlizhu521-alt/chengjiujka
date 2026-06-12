@@ -237,16 +237,29 @@ function localDateString(date = new Date()) {
 
 function publicReviewResult(record) {
   const normalizedRecord = normalizeAttachmentNames(record);
+  const isPublished = Boolean(normalizedRecord.resultPublished);
+
+  if (!isPublished) {
+    return {
+      id: normalizedRecord.id,
+      cardType: normalizedRecord.cardType,
+      applicantName: normalizedRecord.applicantName,
+      applicationDate: normalizedRecord.applicationDate,
+      reviewStatus: "评审结果暂未发布",
+      score: "",
+      reviewComment: "评审小组正在整理最终意见，请等待评审组确认展示。",
+      reviewDate: ""
+    };
+  }
+
   return {
     id: normalizedRecord.id,
     cardType: normalizedRecord.cardType,
     applicantName: normalizedRecord.applicantName,
     applicationDate: normalizedRecord.applicationDate,
-    submittedAt: normalizedRecord.submittedAt,
     reviewStatus: normalizedRecord.reviewStatus,
     score: normalizedRecord.score,
-    reviewComment: normalizedRecord.reviewComment,
-    reviewer: normalizedRecord.reviewer,
+    reviewComment: normalizedRecord.finalPublicComment || "暂无最终评审意见。",
     reviewDate: normalizedRecord.reviewDate
   };
 }
@@ -455,6 +468,10 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     reviewer: "",
     reviewDate: "",
     reviewVotes: {},
+    finalPublicComment: "",
+    resultPublished: false,
+    resultPublishedAt: "",
+    resultPublishedBy: "",
     attachments: (req.files || []).map(uploadedFileInfo),
     feedbackFiles: []
   };
@@ -559,6 +576,30 @@ app.patch("/api/submissions/:id/query-secret", requireAdmin, (req, res) => {
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
   res.json({ message: "查询秘钥已重置。", record: publicSubmissionForReview(record) });
+});
+
+app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
+  const finalPublicComment = String(req.body.finalPublicComment || "").trim();
+  const resultPublished = Boolean(req.body.resultPublished);
+
+  if (resultPublished && !finalPublicComment) {
+    return res.status(400).json({ message: "请先补齐最终展示评审意见，再确认展示。" });
+  }
+
+  const records = readSubmissions();
+  const record = records.find((item) => item.id === req.params.id);
+  if (!record) {
+    return res.status(404).json({ message: "未找到提交记录。" });
+  }
+
+  record.finalPublicComment = finalPublicComment;
+  record.resultPublished = resultPublished;
+  record.resultPublishedAt = resultPublished ? new Date().toISOString() : "";
+  record.resultPublishedBy = resultPublished ? req.authUser.name : "";
+  record.updatedAt = new Date().toISOString();
+  writeSubmissions(records);
+
+  res.json(publicSubmissionForReview(record));
 });
 
 app.get("/api/files/:filename", requireReviewUser, (req, res) => {

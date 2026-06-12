@@ -145,11 +145,6 @@ function setQueryResult(content, type = "") {
   queryResult.innerHTML = content;
 }
 
-function formatDateTime(value) {
-  if (!value) return "未填写";
-  return new Date(value).toLocaleString("zh-CN", { hour12: false });
-}
-
 function renderResultRecords(records) {
   if (!records.length) {
     return '<p class="empty-files">未查询到匹配的申请记录，请核对姓名和秘钥。</p>';
@@ -164,14 +159,11 @@ function renderResultRecords(records) {
             <span class="result-status">${escapeHtml(item.reviewStatus || "待评审")}</span>
           </div>
           <div class="result-grid">
-            <div><span>申请编号</span>${escapeHtml(item.id)}</div>
             <div><span>申报日期</span>${escapeHtml(item.applicationDate || "未填写")}</div>
-            <div><span>提交时间</span>${escapeHtml(formatDateTime(item.submittedAt))}</div>
             <div><span>评审日期</span>${escapeHtml(item.reviewDate || "暂未评审")}</div>
             <div><span>成就卡分值</span>${escapeHtml(item.score ? `${item.score}分` : "暂未评定")}</div>
-            <div><span>评审参与人</span>${escapeHtml(item.reviewer || "暂未填写")}</div>
           </div>
-          <p><strong>评审意见：</strong>${escapeHtml(item.reviewComment || "暂无评审意见")}</p>
+          <p><strong>评审建议：</strong>${escapeHtml(item.reviewComment || "暂无评审建议")}</p>
         </article>
       `
     )

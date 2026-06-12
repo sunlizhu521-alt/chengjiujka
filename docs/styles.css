@@ -839,6 +839,7 @@ small {
 .description-block,
 .attachments,
 .feedback-files,
+.public-result-confirm,
 .query-secret-admin {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -851,6 +852,7 @@ small {
 .description-block strong,
 .attachments strong,
 .feedback-files strong,
+.public-result-confirm strong,
 .query-secret-admin strong {
   display: block;
   color: var(--muted);
@@ -1043,6 +1045,7 @@ small {
 }
 
 .feedback-files,
+.public-result-confirm,
 .query-secret-admin {
   margin-top: 14px;
 }
@@ -1091,6 +1094,31 @@ small {
 
 .query-secret-admin h3 {
   margin-bottom: 8px;
+}
+
+.public-result-confirm h3 {
+  margin-bottom: 8px;
+}
+
+.public-result-confirm p {
+  margin-bottom: 10px;
+  color: var(--muted);
+}
+
+.public-result-form {
+  display: grid;
+  gap: 12px;
+}
+
+.public-result-check {
+  width: fit-content;
+  margin-top: 0;
+}
+
+.public-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .query-secret-admin p {
