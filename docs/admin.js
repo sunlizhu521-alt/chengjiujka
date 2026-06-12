@@ -229,7 +229,7 @@ function renderVoteProgress(item) {
   const votes = item.reviewVotes || {};
   return `
     <div class="vote-progress">
-      <strong>投票进度</strong>
+      <strong>评审进度</strong>
       <div class="vote-pills">
         ${reviewMembers
           .map((name) => {
