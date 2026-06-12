@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡评审结果汇总</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611-16" />
+    <link rel="stylesheet" href="./styles.css?v=20260612-01" />
   </head>
   <body>
     <header class="topbar">
@@ -21,8 +21,14 @@
     <main class="admin-layout">
       <section class="panel summary-toolbar">
         <label class="field token-field">
-          <span>评审口令</span>
-          <input id="adminToken" type="password" placeholder="请输入 ADMIN_TOKEN" />
+          <span>管理员姓名</span>
+          <select id="adminName">
+            <option value="孙立柱">孙立柱</option>
+          </select>
+        </label>
+        <label class="field token-field">
+          <span>管理员秘钥</span>
+          <input id="adminSecret" type="password" placeholder="请输入管理员秘钥" />
         </label>
         <label class="field">
           <span>项目筛选</span>
@@ -70,14 +76,14 @@
                 <th>申报日期</th>
                 <th>评审结果</th>
                 <th>分值</th>
-                <th>是否通过投票</th>
+                <th>投票记录</th>
                 <th>评审意见</th>
                 <th>评审日期</th>
               </tr>
             </thead>
             <tbody id="summaryBody">
               <tr>
-                <td colspan="11">请输入评审口令后加载汇总。</td>
+                <td colspan="11">请输入管理员秘钥后加载汇总。</td>
               </tr>
             </tbody>
           </table>
@@ -86,6 +92,6 @@
     </main>
 
     <script src="./config.js?v=20260611-13"></script>
-    <script src="./summary.js?v=20260611-16"></script>
+    <script src="./summary.js?v=20260612-01"></script>
   </body>
 </html>
