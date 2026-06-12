@@ -16,6 +16,7 @@ const setupForm = document.querySelector("#setupForm");
 const setupSecret = document.querySelector("#setupSecret");
 const loginMessage = document.querySelector("#loginMessage");
 const currentUserLabel = document.querySelector("#currentUserLabel");
+const summaryEntry = document.querySelector("#summaryEntry");
 const logoutBtn = document.querySelector("#logoutBtn");
 const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
@@ -446,6 +447,8 @@ function renderRecords() {
 function showReviewApp(user) {
   currentUser = user;
   currentUserLabel.textContent = `${user.name}（${user.role === "admin" ? "管理员" : "评审人"}）`;
+  summaryEntry.hidden = user.role !== "admin";
+  summaryEntry.style.display = user.role === "admin" ? "" : "none";
   loginPanel.hidden = true;
   loginPanel.style.display = "none";
   reviewApp.hidden = false;
@@ -457,6 +460,8 @@ function showLogin() {
   authToken = "";
   localStorage.removeItem("chengjiukaReviewToken");
   localStorage.removeItem("chengjiukaReviewUser");
+  summaryEntry.hidden = true;
+  summaryEntry.style.display = "none";
   loginPanel.hidden = false;
   loginPanel.style.display = "";
   reviewApp.hidden = true;
