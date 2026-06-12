@@ -398,7 +398,9 @@ function showReviewApp(user) {
   currentUser = user;
   currentUserLabel.textContent = `${user.name}（${user.role === "admin" ? "管理员" : "评审人"}）`;
   loginPanel.hidden = true;
+  loginPanel.style.display = "none";
   reviewApp.hidden = false;
+  reviewApp.style.display = "";
 }
 
 function showLogin() {
@@ -407,7 +409,9 @@ function showLogin() {
   localStorage.removeItem("chengjiukaReviewToken");
   localStorage.removeItem("chengjiukaReviewUser");
   loginPanel.hidden = false;
+  loginPanel.style.display = "";
   reviewApp.hidden = true;
+  reviewApp.style.display = "none";
   setupForm.hidden = true;
   allRecords = [];
 }
