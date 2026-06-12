@@ -225,6 +225,7 @@ function publicSubmissionForReview(record) {
   delete normalizedRecord.querySecretHash;
   return {
     ...normalizedRecord,
+    querySecretPlain: normalizedRecord.querySecretPlain || "",
     querySecretSet
   };
 }
@@ -445,6 +446,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     applicationDate,
     description: description.trim(),
     querySecretHash: hashSecret(querySecret.trim()),
+    querySecretPlain: querySecret.trim(),
     commitment,
     submittedAt: now,
     reviewStatus: "待评审",
@@ -552,6 +554,7 @@ app.patch("/api/submissions/:id/query-secret", requireAdmin, (req, res) => {
   }
 
   record.querySecretHash = hashSecret(querySecret);
+  record.querySecretPlain = querySecret;
   record.querySecretResetAt = new Date().toISOString();
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);

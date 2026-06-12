@@ -274,11 +274,41 @@ function renderFeedbackFiles(item) {
 function renderQuerySecretAdmin(item) {
   if (!currentUser || currentUser.role !== "admin") return "";
   const resetAt = item.querySecretResetAt ? `最近重置：${formatDate(item.querySecretResetAt)}` : "未重置过";
+  const sameApplicantRecords = allRecords.filter((record) => record.applicantName === item.applicantName);
+  const secretRows = sameApplicantRecords
+    .map((record) => {
+      const secretText = record.querySecretPlain
+        ? record.querySecretPlain
+        : "历史记录不可查看，可在下方重置";
+      return `
+        <tr>
+          <td>${escapeHtml(record.applicantName)}</td>
+          <td>${escapeHtml(record.cardType)}</td>
+          <td>${escapeHtml(secretText)}</td>
+          <td>${escapeHtml(record.querySecretResetAt ? formatDate(record.querySecretResetAt) : "未重置")}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
   return `
     <section class="query-secret-admin">
       <h3>查询秘钥管理</h3>
-      <p>员工原查询秘钥采用加密保存，不能反查明文；管理员可在这里重置新的查询秘钥。</p>
-      <p><strong>当前状态：</strong>${item.querySecretSet === false ? "未设置" : "已设置"}，${escapeHtml(resetAt)}</p>
+      <p>当前按提交人姓名查询：<strong>${escapeHtml(item.applicantName)}</strong></p>
+      <div class="query-secret-table-wrap">
+        <table class="query-secret-table">
+          <thead>
+            <tr>
+              <th>提交人姓名</th>
+              <th>成就卡</th>
+              <th>查询秘钥</th>
+              <th>重置时间</th>
+            </tr>
+          </thead>
+          <tbody>${secretRows}</tbody>
+        </table>
+      </div>
+      <p><strong>当前记录状态：</strong>${item.querySecretSet === false ? "未设置" : "已设置"}，${escapeHtml(resetAt)}</p>
       <form class="query-secret-form">
         <label class="field">
           <span>新的查询秘钥</span>

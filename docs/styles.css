@@ -1049,6 +1049,35 @@ small {
   color: var(--muted);
 }
 
+.query-secret-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+
+.query-secret-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 14px;
+}
+
+.query-secret-table th,
+.query-secret-table td {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.query-secret-table th {
+  background: #f1f5f9;
+  color: #334155;
+  white-space: nowrap;
+}
+
 .vote-progress {
   border: 1px solid var(--line);
   border-radius: 6px;
