@@ -30,6 +30,13 @@ const cardScores = {
   文化先锋: 10,
   最美工位: 5
 };
+const cardCycles = {
+  奋斗者: "一年",
+  分享达人: "一年",
+  业绩之王: "一季度",
+  文化先锋: "一年",
+  最美工位: "一季度"
+};
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -344,6 +351,55 @@ function calculateFinalReview(votes, cardType) {
   };
 }
 
+function parseDateOnly(value) {
+  if (!value) return null;
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addCycle(date, cycle) {
+  const result = new Date(date.getTime());
+  if (cycle === "一季度") {
+    result.setMonth(result.getMonth() + 3);
+    return result;
+  }
+  result.setFullYear(result.getFullYear() + 1);
+  return result;
+}
+
+function publicPassedRecord(record) {
+  return {
+    applicantName: record.applicantName,
+    department: record.department,
+    cardType: record.cardType,
+    score: record.score || String(cardScores[record.cardType] || ""),
+    applicationDate: record.applicationDate || "",
+    reviewDate: record.reviewDate || ""
+  };
+}
+
+function groupPublicPassedRecords(records, now = new Date()) {
+  return records.reduce(
+    (groups, record) => {
+      if (!record.resultPublished || record.reviewStatus !== "通过") {
+        return groups;
+      }
+
+      const baseDate = parseDateOnly(record.reviewDate) || parseDateOnly(record.applicationDate);
+      if (!baseDate) {
+        groups.expired.push(publicPassedRecord(record));
+        return groups;
+      }
+
+      const expiresAt = addCycle(baseDate, cardCycles[record.cardType] || "一年");
+      const targetGroup = expiresAt >= now ? "active" : "expired";
+      groups[targetGroup].push(publicPassedRecord(record));
+      return groups;
+    },
+    { active: [], expired: [] }
+  );
+}
+
 function findStoredFile(filename) {
   const safeName = path.basename(filename);
   const records = readSubmissions();
@@ -521,6 +577,11 @@ app.post("/api/results/query", (req, res) => {
     .map(publicReviewResult);
 
   res.json({ records });
+});
+
+app.get("/api/public/passed", (req, res) => {
+  const groups = groupPublicPassedRecords(readSubmissions());
+  res.json(groups);
 });
 
 app.get("/api/submissions", requireReviewUser, (req, res) => {
