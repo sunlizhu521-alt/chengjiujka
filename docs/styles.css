@@ -1,5 +1,5 @@
 :root {
-  --bg: #f4f6f8;
+  --bg: #f5f5f7;
   --panel: #ffffff;
   --text: #1e293b;
   --muted: #64748b;
@@ -32,16 +32,22 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: 28px clamp(18px, 5vw, 64px);
-  background: #102033;
-  color: #fff;
+  gap: 18px;
+  min-height: 82px;
+  padding: 14px clamp(18px, 4vw, 42px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.86);
+  color: #111827;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .eyebrow {
-  margin: 0 0 4px;
-  color: #b6c6d8;
-  font-size: 13px;
+  margin: 0 0 2px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -54,7 +60,8 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(26px, 4vw, 40px);
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.18;
   letter-spacing: 0;
 }
 
@@ -83,19 +90,29 @@ button {
 .admin-link {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
-  padding: 0 16px;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  padding: 0 15px;
+  background: #2563eb;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.18);
+  font-size: 14px;
+  line-height: 1;
   white-space: nowrap;
 }
 
 .top-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .secondary-link {
-  background: #334155;
+  border-color: rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  color: #1f2937;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
 }
 
 .secondary-button {
@@ -112,10 +129,15 @@ button:hover,
   background: var(--blue-dark);
 }
 
+.secondary-link:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
 .layout,
 .admin-layout {
   width: min(1180px, calc(100% - 32px));
-  margin: 28px auto 56px;
+  margin: 20px auto 52px;
 }
 
 .layout {
@@ -1175,6 +1197,11 @@ small {
   .record-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .topbar {
+    min-height: auto;
+    padding: 14px 16px;
   }
 
   .selected-files li {
