@@ -1032,7 +1032,8 @@ small {
 }
 
 .feedback-upload-form,
-.query-secret-form {
+.query-secret-form,
+.query-secret-lookup-form {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
@@ -1040,6 +1041,16 @@ small {
   border-top: 1px solid var(--line);
   margin-top: 12px;
   padding-top: 12px;
+}
+
+.query-secret-lookup-form {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.query-secret-lookup-result {
+  margin: 10px 0;
 }
 
 .feedback-upload-box {
@@ -1220,6 +1231,7 @@ small {
   .setup-form,
   .feedback-upload-form,
   .query-secret-form,
+  .query-secret-lookup-form,
   .review-form,
   .query-form {
     grid-template-columns: 1fr;
