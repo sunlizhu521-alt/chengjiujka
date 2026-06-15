@@ -589,6 +589,16 @@ app.get("/api/public/passed", (req, res) => {
   res.json(groups);
 });
 
+app.get("/api/applicants/secret-status", (req, res) => {
+  const applicantName = String(req.query.applicantName || "").trim();
+  if (!applicantName) {
+    return res.json({ hasSecret: false });
+  }
+
+  const hasSecret = readSubmissions().some((record) => record.applicantName === applicantName && record.querySecretHash);
+  res.json({ hasSecret });
+});
+
 app.get("/api/submissions", requireReviewUser, (req, res) => {
   res.json(readSubmissions().map(publicSubmissionForReview));
 });

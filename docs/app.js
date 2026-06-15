@@ -7,6 +7,10 @@ const message = document.querySelector("#message");
 const resultQueryForm = document.querySelector("#resultQueryForm");
 const queryResult = document.querySelector("#queryResult");
 const dateInput = form.querySelector('input[name="applicationDate"]');
+const applicantNameInput = form.querySelector('input[name="applicantName"]');
+const querySecretField = document.querySelector("#querySecretField");
+const querySecretInput = form.querySelector('input[name="querySecret"]');
+const querySecretHint = document.querySelector("#querySecretHint");
 const attachmentInput = document.querySelector("#attachmentInput");
 const attachmentList = document.querySelector("#attachmentList");
 const uploadCount = document.querySelector("#uploadCount");
@@ -16,6 +20,8 @@ const isGithubPages = window.location.hostname.endsWith("github.io");
 let selectedCardType = "";
 let selectedFiles = [];
 let currentCardFilter = "open";
+let applicantHasHistorySecret = false;
+let secretStatusTimer = null;
 
 dateInput.valueAsDate = new Date();
 
@@ -226,6 +232,32 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
+function updateQuerySecretVisibility(hasSecret) {
+  applicantHasHistorySecret = hasSecret;
+  querySecretField.hidden = hasSecret;
+  querySecretInput.required = !hasSecret;
+  if (hasSecret) {
+    querySecretInput.value = "";
+    querySecretHint.textContent = "已申请过，系统会自动沿用之前设置的查询秘钥。";
+    return;
+  }
+  querySecretHint.textContent = "首次申请必填；同一姓名后续申请会自动沿用之前设置的查询秘钥。";
+}
+
+async function refreshApplicantSecretStatus() {
+  const applicantName = applicantNameInput.value.trim();
+  if (!applicantName || !hasBackend()) {
+    updateQuerySecretVisibility(false);
+    return false;
+  }
+
+  const response = await fetch(apiUrl(`/api/applicants/secret-status?applicantName=${encodeURIComponent(applicantName)}`));
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || "查询申请人状态失败");
+  updateQuerySecretVisibility(Boolean(result.hasSecret));
+  return Boolean(result.hasSecret);
+}
+
 cardFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
     currentCardFilter = button.dataset.cardFilter;
@@ -259,6 +291,15 @@ attachmentList.addEventListener("click", (event) => {
   renderSelectedFiles();
 });
 
+applicantNameInput.addEventListener("input", () => {
+  clearTimeout(secretStatusTimer);
+  secretStatusTimer = setTimeout(() => {
+    refreshApplicantSecretStatus().catch(() => {
+      updateQuerySecretVisibility(false);
+    });
+  }, 350);
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -273,6 +314,19 @@ form.addEventListener("submit", async (event) => {
 
   if (!hasBackend()) {
     setMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
+    return;
+  }
+
+  try {
+    await refreshApplicantSecretStatus();
+  } catch (error) {
+    setMessage(error.message, "error");
+    return;
+  }
+
+  if (!applicantHasHistorySecret && querySecretInput.value.trim().length < 4) {
+    setMessage("首次申请请设置至少4位查询秘钥。", "error");
+    querySecretInput.focus();
     return;
   }
 
