@@ -51,6 +51,36 @@ function currentCardButtons() {
   return Array.from(document.querySelectorAll(".card-choice"));
 }
 
+function snapshotApplicationState() {
+  const values = {};
+  new FormData(form).forEach((value, key) => {
+    values[key] = value;
+  });
+  return {
+    values,
+    files: selectedFiles.slice(),
+    hasHistorySecret: applicantHasHistorySecret
+  };
+}
+
+function restoreApplicationState(snapshot) {
+  Object.entries(snapshot.values).forEach(([key, value]) => {
+    const field = form.elements[key];
+    if (!field || field.type === "file") return;
+    if (field.type === "checkbox" || field.type === "radio") {
+      field.checked = field.value === value;
+      return;
+    }
+    field.value = value;
+  });
+  selectedFiles = snapshot.files.slice();
+  renderSelectedFiles();
+  updateQuerySecretVisibility(snapshot.hasHistorySecret);
+  if (snapshot.values.querySecret) {
+    querySecretInput.value = snapshot.values.querySecret;
+  }
+}
+
 function renderCardChoices() {
   const isOpenFilter = currentCardFilter === "open";
   const cards = Object.entries(cardDetails).filter(([, detail]) => isOpenCard(detail) === isOpenFilter);
@@ -110,6 +140,7 @@ function renderCardInfo(name) {
 }
 
 function selectCard(name) {
+  const snapshot = snapshotApplicationState();
   const detail = cardDetails[name];
   if (!isOpenCard(detail)) {
     selectedCardType = "";
@@ -118,6 +149,7 @@ function selectCard(name) {
       button.setAttribute("aria-pressed", "false");
     });
     renderCardInfo(name);
+    restoreApplicationState(snapshot);
     setMessage("该成就卡暂未开放，暂不支持提交申请。", "error");
     return;
   }
@@ -129,6 +161,7 @@ function selectCard(name) {
     button.setAttribute("aria-pressed", String(isSelected));
   });
   renderCardInfo(name);
+  restoreApplicationState(snapshot);
   setMessage("", "");
 }
 
@@ -260,6 +293,7 @@ async function refreshApplicantSecretStatus() {
 
 cardFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    const snapshot = snapshotApplicationState();
     currentCardFilter = button.dataset.cardFilter;
     cardFilterButtons.forEach((item) => {
       const isSelected = item === button;
@@ -268,6 +302,7 @@ cardFilterButtons.forEach((button) => {
     });
     clearCardSelection();
     renderCardChoices();
+    restoreApplicationState(snapshot);
     setMessage("", "");
   });
 });
@@ -352,6 +387,7 @@ form.addEventListener("submit", async (event) => {
 
     form.reset();
     dateInput.valueAsDate = new Date();
+    updateQuerySecretVisibility(false);
     selectedFiles = [];
     renderSelectedFiles();
     clearCardSelection();
