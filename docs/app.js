@@ -108,8 +108,8 @@ function selectCard(name) {
   if (!isOpenCard(detail)) {
     selectedCardType = "";
     currentCardButtons().forEach((button) => {
-      button.classList.toggle("is-selected", button.dataset.cardType === name);
-      button.setAttribute("aria-pressed", String(button.dataset.cardType === name));
+      button.classList.remove("is-selected");
+      button.setAttribute("aria-pressed", "false");
     });
     renderCardInfo(name);
     setMessage("该成就卡暂未开放，暂不支持提交申请。", "error");

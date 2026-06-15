@@ -489,9 +489,14 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     ["commitment", commitment]
   ].filter(([, value]) => !String(value || "").trim());
 
-  if (requiredMissing.length > 0 || !cardTypes.has(cardType)) {
+  if (requiredMissing.length > 0) {
     removeUploadedFiles(req.files);
     return res.status(400).json({ message: "请完整填写必填信息后再提交。" });
+  }
+
+  if (!cardTypes.has(cardType)) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "该成就卡暂未开放，暂不支持提交申请。" });
   }
 
   const records = readSubmissions();
