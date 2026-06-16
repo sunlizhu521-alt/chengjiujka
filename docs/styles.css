@@ -54,6 +54,7 @@ body {
 
 .topbar > div,
 .topbar > nav {
+  grid-column: 1;
   grid-row: 1;
 }
 
