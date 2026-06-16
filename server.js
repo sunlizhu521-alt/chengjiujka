@@ -175,7 +175,7 @@ function readUsers() {
     }
     if (!users[name].name) users[name].name = name;
     if (!users[name].role) users[name].role = user.role;
-    if (name === adminName && !users[name].secretHash) {
+    if (name === adminName && (users[name].secretHash !== user.secretHash || users[name].mustChangeSecret)) {
       users[name].secretHash = user.secretHash;
       users[name].mustChangeSecret = false;
       changed = true;
