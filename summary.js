@@ -1,6 +1,8 @@
 let allRecords = [];
+let authToken = localStorage.getItem("chengjiukaReviewToken") || "";
 
-const tokenInput = document.querySelector("#adminToken");
+const adminNameInput = document.querySelector("#adminName");
+const adminSecretInput = document.querySelector("#adminSecret");
 const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
 const searchInput = document.querySelector("#searchInput");
@@ -11,8 +13,6 @@ const summaryMessage = document.querySelector("#summaryMessage");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
-
-tokenInput.value = localStorage.getItem("chengjiukaAdminToken") || "";
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => {
@@ -32,6 +32,13 @@ function hasBackend() {
 
 function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
+}
+
+function authHeaders(extra = {}) {
+  return {
+    ...extra,
+    "x-review-token": authToken
+  };
 }
 
 function normalizeReviewStatus(status) {
@@ -141,21 +148,51 @@ async function loadRecords() {
     return;
   }
 
-  const token = tokenInput.value.trim();
-  if (!token) {
-    setSummaryMessage("请输入评审口令。", "error");
-    tokenInput.focus();
-    return;
+  if (authToken) {
+    const meResponse = await fetch(apiUrl("/api/auth/me"), {
+      headers: authHeaders()
+    });
+    const meResult = await meResponse.json();
+    if (!meResponse.ok || !meResult.user || meResult.user.role !== "admin") {
+      authToken = "";
+      localStorage.removeItem("chengjiukaReviewToken");
+    }
   }
 
-  localStorage.setItem("chengjiukaAdminToken", token);
+  if (!authToken) {
+    const name = adminNameInput.value.trim();
+    const secret = adminSecretInput.value.trim();
+    if (!name || !secret) {
+      setSummaryMessage("请输入管理员秘钥。", "error");
+      adminSecretInput.focus();
+      return;
+    }
+
+    const loginResponse = await fetch(apiUrl("/api/auth/login"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, secret })
+    });
+    const loginResult = await loginResponse.json();
+    if (!loginResponse.ok) {
+      setSummaryMessage(loginResult.message || "登录失败", "error");
+      return;
+    }
+    if (!loginResult.user || loginResult.user.role !== "admin") {
+      setSummaryMessage("只有管理员可以查看结果汇总。", "error");
+      return;
+    }
+    authToken = loginResult.token;
+    localStorage.setItem("chengjiukaReviewToken", authToken);
+  }
+
   loadBtn.disabled = true;
   loadBtn.textContent = "加载中...";
   setSummaryMessage("", "");
 
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
-      headers: { "x-admin-token": token }
+      headers: authHeaders()
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "加载失败");

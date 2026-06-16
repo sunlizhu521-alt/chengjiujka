@@ -3,18 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>成就卡申请表</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611-23" />
+    <title>成就卡申请</title>
+    <link rel="stylesheet" href="./styles.css?v=20260612-06" />
   </head>
   <body>
     <header class="topbar">
       <div>
         <p class="eyebrow">Achievement Card</p>
-        <h1>成就卡申请表</h1>
+        <h1>成就卡申请</h1>
       </div>
       <nav class="top-actions" aria-label="页面导航">
-        <a class="admin-link" href="./admin.html">评审入口</a>
-        <a class="admin-link secondary-link" href="./summary.html">结果汇总</a>
+        <a class="admin-link secondary-link" href="./passed.html">成就卡榜单</a>
+        <a class="admin-link" href="./admin.html">评审组入口</a>
       </nav>
     </header>
 
@@ -42,7 +42,23 @@
           </label>
           <label class="field">
             <span>所属部门 <b>*</b></span>
-            <input name="department" required />
+            <select name="department" required>
+              <option value="">请选择所属部门</option>
+              <option>集团总办</option>
+              <option>国内事业部</option>
+              <option>供应链管理中心</option>
+              <option>海外事业一部</option>
+              <option>海外事业二部</option>
+              <option>产研中心</option>
+              <option>视觉影视部</option>
+              <option>行政部</option>
+              <option>人力资源部</option>
+              <option>品牌市场部</option>
+              <option>财务中心</option>
+              <option>全球招商部</option>
+              <option>电控生产部</option>
+              <option>销售-工厂</option>
+            </select>
           </label>
           <label class="field">
             <span>岗位 <b>*</b></span>
@@ -81,10 +97,10 @@
         <div id="attachmentList" class="selected-files" aria-live="polite"></div>
 
         <h2>四、提交确认</h2>
-        <label class="field">
-          <span>设置查询秘钥 <b>*</b></span>
-          <input type="password" name="querySecret" autocomplete="new-password" required minlength="4" placeholder="请设置至少4位秘钥，用于后期查询评审结果" />
-          <small>请记住该秘钥，后期可使用“申报人姓名 + 查询秘钥”查看评审结果。</small>
+        <label class="field" id="querySecretField">
+          <span>设置查询秘钥</span>
+          <input type="password" name="querySecret" autocomplete="new-password" minlength="4" placeholder="首次申请请设置至少4位秘钥" />
+          <small id="querySecretHint">首次申请必填；同一姓名后续申请会自动沿用之前设置的查询秘钥。</small>
         </label>
         <label class="checkline">
           <input type="checkbox" name="commitment" value="我确认" required />
@@ -114,8 +130,8 @@
       </section>
     </main>
 
-    <script src="./config.js?v=20260611-6"></script>
+    <script src="./config.js?v=20260611-13"></script>
     <script src="./card-data.js?v=20260611-24"></script>
-    <script src="./app.js?v=20260611-25"></script>
+    <script src="./app.js?v=20260616-01"></script>
   </body>
 </html>

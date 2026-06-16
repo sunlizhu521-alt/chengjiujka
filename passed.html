@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>成就卡榜单</title>
+    <link rel="stylesheet" href="./styles.css?v=20260612-05" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Achievement Ranking</p>
+        <h1>成就卡榜单</h1>
+      </div>
+      <nav class="top-actions" aria-label="页面导航">
+        <a class="admin-link secondary-link" href="./index.html">成就卡申请</a>
+      </nav>
+    </header>
+
+    <main class="layout public-passed-layout">
+      <section class="panel public-passed-panel">
+        <div class="summary-table-head">
+          <h2>有效期内</h2>
+          <p id="passedMessage" class="message" role="status"></p>
+        </div>
+        <div id="activePassedList" class="public-passed-list" aria-live="polite"></div>
+      </section>
+
+      <section class="panel public-passed-panel">
+        <div class="summary-table-head">
+          <h2>已过有效期</h2>
+        </div>
+        <div id="expiredPassedList" class="public-passed-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="./config.js?v=20260611-13"></script>
+    <script src="./passed.js?v=20260612-05"></script>
+  </body>
+</html>

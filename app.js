@@ -7,6 +7,10 @@ const message = document.querySelector("#message");
 const resultQueryForm = document.querySelector("#resultQueryForm");
 const queryResult = document.querySelector("#queryResult");
 const dateInput = form.querySelector('input[name="applicationDate"]');
+const applicantNameInput = form.querySelector('input[name="applicantName"]');
+const querySecretField = document.querySelector("#querySecretField");
+const querySecretInput = form.querySelector('input[name="querySecret"]');
+const querySecretHint = document.querySelector("#querySecretHint");
 const attachmentInput = document.querySelector("#attachmentInput");
 const attachmentList = document.querySelector("#attachmentList");
 const uploadCount = document.querySelector("#uploadCount");
@@ -16,6 +20,8 @@ const isGithubPages = window.location.hostname.endsWith("github.io");
 let selectedCardType = "";
 let selectedFiles = [];
 let currentCardFilter = "open";
+let applicantHasHistorySecret = false;
+let secretStatusTimer = null;
 
 dateInput.valueAsDate = new Date();
 
@@ -43,6 +49,36 @@ function isOpenCard(detail) {
 
 function currentCardButtons() {
   return Array.from(document.querySelectorAll(".card-choice"));
+}
+
+function snapshotApplicationState() {
+  const values = {};
+  new FormData(form).forEach((value, key) => {
+    values[key] = value;
+  });
+  return {
+    values,
+    files: selectedFiles.slice(),
+    hasHistorySecret: applicantHasHistorySecret
+  };
+}
+
+function restoreApplicationState(snapshot) {
+  Object.entries(snapshot.values).forEach(([key, value]) => {
+    const field = form.elements[key];
+    if (!field || field.type === "file") return;
+    if (field.type === "checkbox" || field.type === "radio") {
+      field.checked = field.value === value;
+      return;
+    }
+    field.value = value;
+  });
+  selectedFiles = snapshot.files.slice();
+  renderSelectedFiles();
+  updateQuerySecretVisibility(snapshot.hasHistorySecret);
+  if (snapshot.values.querySecret) {
+    querySecretInput.value = snapshot.values.querySecret;
+  }
 }
 
 function renderCardChoices() {
@@ -104,14 +140,16 @@ function renderCardInfo(name) {
 }
 
 function selectCard(name) {
+  const snapshot = snapshotApplicationState();
   const detail = cardDetails[name];
   if (!isOpenCard(detail)) {
     selectedCardType = "";
     currentCardButtons().forEach((button) => {
-      button.classList.toggle("is-selected", button.dataset.cardType === name);
-      button.setAttribute("aria-pressed", String(button.dataset.cardType === name));
+      button.classList.remove("is-selected");
+      button.setAttribute("aria-pressed", "false");
     });
     renderCardInfo(name);
+    restoreApplicationState(snapshot);
     setMessage("该成就卡暂未开放，暂不支持提交申请。", "error");
     return;
   }
@@ -123,6 +161,7 @@ function selectCard(name) {
     button.setAttribute("aria-pressed", String(isSelected));
   });
   renderCardInfo(name);
+  restoreApplicationState(snapshot);
   setMessage("", "");
 }
 
@@ -145,11 +184,6 @@ function setQueryResult(content, type = "") {
   queryResult.innerHTML = content;
 }
 
-function formatDateTime(value) {
-  if (!value) return "未填写";
-  return new Date(value).toLocaleString("zh-CN", { hour12: false });
-}
-
 function renderResultRecords(records) {
   if (!records.length) {
     return '<p class="empty-files">未查询到匹配的申请记录，请核对姓名和秘钥。</p>';
@@ -164,14 +198,11 @@ function renderResultRecords(records) {
             <span class="result-status">${escapeHtml(item.reviewStatus || "待评审")}</span>
           </div>
           <div class="result-grid">
-            <div><span>申请编号</span>${escapeHtml(item.id)}</div>
             <div><span>申报日期</span>${escapeHtml(item.applicationDate || "未填写")}</div>
-            <div><span>提交时间</span>${escapeHtml(formatDateTime(item.submittedAt))}</div>
             <div><span>评审日期</span>${escapeHtml(item.reviewDate || "暂未评审")}</div>
             <div><span>成就卡分值</span>${escapeHtml(item.score ? `${item.score}分` : "暂未评定")}</div>
-            <div><span>评审参与人</span>${escapeHtml(item.reviewer || "暂未填写")}</div>
           </div>
-          <p><strong>评审意见：</strong>${escapeHtml(item.reviewComment || "暂无评审意见")}</p>
+          <p><strong>评审建议：</strong>${escapeHtml(item.reviewComment || "暂无评审建议")}</p>
         </article>
       `
     )
@@ -234,8 +265,35 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
+function updateQuerySecretVisibility(hasSecret) {
+  applicantHasHistorySecret = hasSecret;
+  querySecretField.hidden = hasSecret;
+  querySecretInput.required = !hasSecret;
+  if (hasSecret) {
+    querySecretInput.value = "";
+    querySecretHint.textContent = "已申请过，系统会自动沿用之前设置的查询秘钥。";
+    return;
+  }
+  querySecretHint.textContent = "首次申请必填；同一姓名后续申请会自动沿用之前设置的查询秘钥。";
+}
+
+async function refreshApplicantSecretStatus() {
+  const applicantName = applicantNameInput.value.trim();
+  if (!applicantName || !hasBackend()) {
+    updateQuerySecretVisibility(false);
+    return false;
+  }
+
+  const response = await fetch(apiUrl(`/api/applicants/secret-status?applicantName=${encodeURIComponent(applicantName)}`));
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || "查询申请人状态失败");
+  updateQuerySecretVisibility(Boolean(result.hasSecret));
+  return Boolean(result.hasSecret);
+}
+
 cardFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
+    const snapshot = snapshotApplicationState();
     currentCardFilter = button.dataset.cardFilter;
     cardFilterButtons.forEach((item) => {
       const isSelected = item === button;
@@ -244,6 +302,7 @@ cardFilterButtons.forEach((button) => {
     });
     clearCardSelection();
     renderCardChoices();
+    restoreApplicationState(snapshot);
     setMessage("", "");
   });
 });
@@ -267,6 +326,15 @@ attachmentList.addEventListener("click", (event) => {
   renderSelectedFiles();
 });
 
+applicantNameInput.addEventListener("input", () => {
+  clearTimeout(secretStatusTimer);
+  secretStatusTimer = setTimeout(() => {
+    refreshApplicantSecretStatus().catch(() => {
+      updateQuerySecretVisibility(false);
+    });
+  }, 350);
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -281,6 +349,19 @@ form.addEventListener("submit", async (event) => {
 
   if (!hasBackend()) {
     setMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
+    return;
+  }
+
+  try {
+    await refreshApplicantSecretStatus();
+  } catch (error) {
+    setMessage(error.message, "error");
+    return;
+  }
+
+  if (!applicantHasHistorySecret && querySecretInput.value.trim().length < 4) {
+    setMessage("首次申请请设置至少4位查询秘钥。", "error");
+    querySecretInput.focus();
     return;
   }
 
@@ -306,10 +387,12 @@ form.addEventListener("submit", async (event) => {
 
     form.reset();
     dateInput.valueAsDate = new Date();
+    updateQuerySecretVisibility(false);
     selectedFiles = [];
     renderSelectedFiles();
     clearCardSelection();
-    setMessage(`${result.message} 编号：${result.id}。请妥善保存查询秘钥。`, "success");
+    const secretTip = result.querySecretInherited ? "已沿用你之前设置的查询秘钥。" : "请妥善保存查询秘钥。";
+    setMessage(`${result.message} 编号：${result.id}。${secretTip}`, "success");
   } catch (error) {
     setMessage(error.message, "error");
   } finally {

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡评审台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260611-20" />
+    <link rel="stylesheet" href="./styles.css?v=20260612-03" />
   </head>
   <body>
     <header class="topbar">
@@ -13,56 +13,91 @@
         <h1>成就卡评审台</h1>
       </div>
       <nav class="top-actions" aria-label="页面导航">
-        <a class="admin-link" href="./summary.html">结果汇总</a>
+        <a class="admin-link" id="summaryEntry" href="./summary.html" hidden>结果汇总</a>
         <a class="admin-link secondary-link" href="./index.html">申请页</a>
       </nav>
     </header>
 
     <main class="admin-layout">
-      <section class="panel toolbar">
-        <label class="field token-field">
-          <span>评审口令</span>
-          <input id="adminToken" type="password" placeholder="请输入 ADMIN_TOKEN" />
-        </label>
-        <label class="field">
-          <span>项目筛选</span>
-          <select id="cardFilter">
-            <option value="">全部项目</option>
-            <option>奋斗者</option>
-            <option>分享达人</option>
-            <option>业绩之王</option>
-            <option>文化先锋</option>
-            <option>最美工位</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>状态筛选</span>
-          <select id="statusFilter">
-            <option value="">全部状态</option>
-            <option>待评审</option>
-            <option>通过</option>
-            <option>不通过</option>
-            <option>需补资料</option>
-          </select>
-        </label>
-        <label class="field search-field">
-          <span>搜索</span>
-          <input id="searchInput" placeholder="姓名、部门、项目、说明" />
-        </label>
-        <div class="toolbar-pager" aria-label="记录切换">
-          <button type="button" id="prevRecordBtn" disabled>上一个</button>
-          <button type="button" id="nextRecordBtn" disabled>下一个</button>
+      <section class="panel login-panel" id="loginPanel">
+        <div>
+          <h2>评审入口登录</h2>
+          <p>请选择姓名并输入评审秘钥。首次登录的评审人需要先设置自己的秘钥。</p>
         </div>
-        <button id="loadBtn" type="button">加载记录</button>
+        <form class="login-form" id="loginForm">
+          <label class="field">
+            <span>姓名</span>
+            <select id="loginName" name="name" required>
+              <option value="孙立柱">孙立柱</option>
+              <option value="王斌">王斌</option>
+              <option value="惠李伟">惠李伟</option>
+              <option value="蒋炳兰">蒋炳兰</option>
+              <option value="任蒨">任蒨</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>评审秘钥</span>
+            <input id="loginSecret" name="secret" type="password" autocomplete="current-password" />
+          </label>
+          <button type="submit" id="loginBtn">登录</button>
+        </form>
+        <form class="login-form setup-form" id="setupForm" hidden>
+          <label class="field">
+            <span>设置新秘钥</span>
+            <input id="setupSecret" name="secret" type="password" minlength="4" autocomplete="new-password" />
+          </label>
+          <button type="submit" id="setupBtn">设置并进入</button>
+        </form>
+        <p id="loginMessage" class="message" role="status"></p>
       </section>
 
-      <section class="summary-row" id="summaryRow"></section>
-      <section id="records" class="records"></section>
-      <p id="adminMessage" class="message admin-message" role="status"></p>
+      <section id="reviewApp" hidden>
+        <section class="panel toolbar">
+          <div class="current-user-box">
+            <span>当前账号</span>
+            <strong id="currentUserLabel">未登录</strong>
+          </div>
+          <label class="field">
+            <span>项目筛选</span>
+            <select id="cardFilter">
+              <option value="">全部项目</option>
+              <option>奋斗者</option>
+              <option>分享达人</option>
+              <option>业绩之王</option>
+              <option>文化先锋</option>
+              <option>最美工位</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>状态筛选</span>
+            <select id="statusFilter">
+              <option value="">全部状态</option>
+              <option>待评审</option>
+              <option>通过</option>
+              <option>不通过</option>
+              <option>需补资料</option>
+            </select>
+          </label>
+          <label class="field search-field">
+            <span>搜索</span>
+            <input id="searchInput" placeholder="姓名、部门、项目、说明" />
+          </label>
+          <div class="toolbar-pager" aria-label="记录切换">
+            <button type="button" id="prevRecordBtn" disabled>上一个</button>
+            <button type="button" id="nextRecordBtn" disabled>下一个</button>
+          </div>
+          <button id="loadBtn" type="button">加载记录</button>
+          <button id="logoutBtn" type="button" class="secondary-button">退出</button>
+        </section>
+
+        <section class="summary-row" id="summaryRow"></section>
+        <section id="records" class="records"></section>
+        <p id="adminMessage" class="message admin-message" role="status"></p>
+      </section>
     </main>
 
     <script src="./config.js?v=20260611-13"></script>
     <script src="./card-data.js?v=20260611-23"></script>
-    <script src="./admin.js?v=20260611-23"></script>
+    <script src="./admin.js?v=20260612-04"></script>
   </body>
 </html>
