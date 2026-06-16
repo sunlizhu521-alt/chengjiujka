@@ -14,6 +14,8 @@
   --cyan-soft: #eaf8ff;
   --pink-soft: #fff0f7;
   --shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+  --page-width: 1180px;
+  --page-gutter: 28px;
 }
 
 * {
@@ -36,18 +38,31 @@ body {
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, var(--page-width));
+  justify-content: center;
   gap: 18px;
   min-height: 82px;
-  padding: 14px clamp(18px, 4vw, 42px);
+  padding: 14px max(14px, calc(var(--page-gutter) / 2));
   border-bottom: 1px solid rgba(218, 218, 244, 0.9);
   background: rgba(255, 255, 255, 0.82);
   color: #171717;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+}
+
+.topbar > div,
+.topbar > nav {
+  grid-row: 1;
+}
+
+.topbar > div {
+  justify-self: start;
+}
+
+.topbar > nav {
+  justify-self: end;
 }
 
 .eyebrow {
@@ -143,7 +158,7 @@ button:hover,
 
 .layout,
 .admin-layout {
-  width: min(1180px, calc(100% - 28px));
+  width: min(var(--page-width), calc(100% - var(--page-gutter)));
   margin: 20px auto 52px;
 }
 
@@ -152,7 +167,6 @@ button:hover,
   grid-template-columns: 1fr;
   gap: 22px;
   align-items: start;
-  max-width: 920px;
 }
 
 .panel {
@@ -570,7 +584,7 @@ small {
 }
 
 .public-passed-layout {
-  max-width: 1180px;
+  max-width: var(--page-width);
 }
 
 .public-passed-panel {
@@ -1332,8 +1346,15 @@ small {
   }
 
   .topbar {
+    grid-template-columns: 1fr;
     min-height: auto;
     padding: 14px 16px;
+  }
+
+  .topbar > div,
+  .topbar > nav {
+    grid-row: auto;
+    justify-self: stretch;
   }
 
   .selected-files li {
