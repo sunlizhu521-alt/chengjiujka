@@ -584,10 +584,6 @@ small {
   gap: 12px;
 }
 
-.public-passed-layout {
-  max-width: var(--page-width);
-}
-
 .public-passed-panel {
   overflow: hidden;
 }
@@ -728,8 +724,7 @@ small {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  max-width: 720px;
-  margin: 0 auto 18px;
+  margin: 0 0 18px;
 }
 
 .login-panel p {
