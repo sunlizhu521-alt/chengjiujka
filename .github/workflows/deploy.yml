@@ -1,0 +1,31 @@
+name: Deploy to Tencent Cloud
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to server
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          tar --exclude='.git' --exclude='node_modules' --exclude='data' --exclude='uploads' -czf /tmp/chengjiujka.tar.gz .
+
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no /tmp/chengjiujka.tar.gz ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'REMOTE'
+            set -e
+            cd /home/ubuntu/zhuge-ai-lab/chengjiujka
+            tar -xzf /tmp/chengjiujka.tar.gz
+            npm install --production
+            PORT=4005 STORAGE_DIR=/home/ubuntu/zhuge-ai-lab/chengjiujka ALLOWED_ORIGIN=https://sunlizhu521-alt.github.io pm2 restart chengjiujka --update-env
+            pm2 save
+          REMOTE
