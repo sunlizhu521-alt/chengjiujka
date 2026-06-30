@@ -21,22 +21,23 @@ const usersFile = path.join(dataDir, "users.json");
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const reviewMemberNames = [adminName, ...reviewerNames];
-const cardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化先锋", "最美工位"]);
 const reviewStatuses = new Set(["通过", "不通过", "需补资料"]);
-const cardScores = {
-  奋斗者: 10,
-  分享达人: 10,
-  业绩之王: 10,
-  文化先锋: 10,
-  最美工位: 5
-};
-const cardCycles = {
-  奋斗者: "一年",
-  分享达人: "一年",
-  业绩之王: "一季度",
-  文化先锋: "一年",
-  最美工位: "一季度"
-};
+function loadCardConfig() {
+  const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
+  const m = raw.match(/window\.CHENGJIUKA_CARD_DETAILS\s*=\s*(\{[\s\S]*\});?\s*$/);
+  if (!m) return null;
+  const details = new Function("return " + m[1])();
+  return {
+    scores: Object.fromEntries(Object.entries(details).filter(([, d]) => d.score).map(([k, d]) => [k, Number(d.score)])),
+    cycles: Object.fromEntries(Object.entries(details).filter(([, d]) => d.cycle).map(([k, d]) => [k, d.cycle])),
+    openTypes: new Set(Object.keys(details).filter((k) => details[k].definition))
+  };
+}
+const cardConfig = loadCardConfig();
+const fallbackCardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化先锋", "最美工位"]);
+const cardTypes = cardConfig ? cardConfig.openTypes : fallbackCardTypes;
+const cardScores = cardConfig ? cardConfig.scores : { 奋斗者: 10, 分享达人: 10, 业绩之王: 10, 文化先锋: 10, 最美工位: 5 };
+const cardCycles = cardConfig ? cardConfig.cycles : { 奋斗者: "一年", 分享达人: "一年", 业绩之王: "一季度", 文化先锋: "一年", 最美工位: "一季度" };
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(uploadDir, { recursive: true });
