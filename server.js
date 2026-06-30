@@ -737,6 +737,49 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "服务器异常，请稍后再试。" });
 });
 
+// 启动时备份数据
+try {
+  const backupDir = path.join(dataDir, "backups");
+  fs.mkdirSync(backupDir, { recursive: true });
+  [submissionsFile, usersFile].forEach((f) => {
+    if (fs.existsSync(f)) {
+      const bak = path.join(dataDir, path.basename(f).replace(".json", ".backup.json"));
+      fs.copyFileSync(f, bak);
+    }
+  });
+} catch (err) {
+  console.error("启动备份失败:", err.message);
+}
+
+// 每6小时定时备份，保留7天
+setInterval(
+  () => {
+    try {
+      const backupDir = path.join(dataDir, "backups");
+      fs.mkdirSync(backupDir, { recursive: true });
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
+      const hourStr = String(now.getHours()).padStart(2, "0");
+      ["submissions", "users"].forEach((name) => {
+        const src = path.join(dataDir, `${name}.json`);
+        if (fs.existsSync(src)) {
+          const dst = path.join(backupDir, `${name}-${dateStr}-${hourStr}.json`);
+          fs.copyFileSync(src, dst);
+        }
+      });
+      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      fs.readdirSync(backupDir).forEach((f) => {
+        if (f.endsWith(".json") && fs.statSync(path.join(backupDir, f)).mtimeMs < sevenDaysAgo) {
+          fs.unlinkSync(path.join(backupDir, f));
+        }
+      });
+    } catch (err) {
+      console.error("定时备份失败:", err.message);
+    }
+  },
+  6 * 60 * 60 * 1000
+);
+
 app.listen(PORT, () => {
   readUsers();
   console.log(`成就卡系统已启动：http://localhost:${PORT}`);
