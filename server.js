@@ -141,7 +141,7 @@ function defaultUsers() {
     [adminName]: {
       name: adminName,
       role: "admin",
-      secretHash: hashSecret("521sunlizhu"),
+      secretHash: hashSecret(process.env.ADMIN_PASSWORD || "521sunlizhu"),
       mustChangeSecret: false
     },
     ...Object.fromEntries(
