@@ -1,1 +1,0 @@
-window.CHENGJIUKA_API_BASE = "http://129.211.9.242:4005";
