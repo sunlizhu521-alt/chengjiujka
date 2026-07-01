@@ -25,6 +25,22 @@ let secretStatusTimer = null;
 
 dateInput.valueAsDate = new Date();
 
+function readStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("chengjiukaReviewUser") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function applyLoggedInApplicantName(options = {}) {
+  const user = readStoredUser();
+  const userName = String(user?.name || "").trim();
+  if (!userName) return;
+  if (!options.force && applicantNameInput.value.trim()) return;
+  applicantNameInput.value = userName;
+}
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => {
     return {
@@ -401,7 +417,9 @@ form.addEventListener("submit", async (event) => {
 
     form.reset();
     dateInput.valueAsDate = new Date();
+    applyLoggedInApplicantName({ force: true });
     updateQuerySecretVisibility(false);
+    refreshApplicantSecretStatus().catch(() => {});
     selectedFiles = [];
     renderSelectedFiles();
     clearCardSelection();
@@ -448,6 +466,8 @@ resultQueryForm.addEventListener("submit", async (event) => {
 
 async function initializePage() {
   renderSelectedFiles();
+  applyLoggedInApplicantName();
+  refreshApplicantSecretStatus().catch(() => {});
   await loadCardDetails();
   renderCardChoices();
 }
