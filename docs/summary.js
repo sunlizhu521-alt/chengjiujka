@@ -70,6 +70,21 @@ function formatDate(value) {
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
 
+function shortId(value) {
+  return String(value || "").slice(0, 8);
+}
+
+function materialSummary(item) {
+  const files = item.attachments || [];
+  if (!files.length) return "无";
+  return `${files.length} 个：${files.map((file) => file.originalName || file.filename || "未命名材料").join("；")}`;
+}
+
+function publishedLabel(item) {
+  if (!item.resultPublished) return "未展示";
+  return item.resultPublishedAt ? `已展示 ${formatDate(item.resultPublishedAt)}` : "已展示";
+}
+
 function setSummaryMessage(text, type) {
   summaryMessage.textContent = text;
   summaryMessage.className = `message ${type || ""}`;
@@ -85,6 +100,7 @@ function filteredRecords() {
     const matchesStatus = !status || normalizeReviewStatus(item.reviewStatus) === status;
     const haystack = [
       item.cardType,
+      item.id,
       item.applicantName,
       item.department,
       item.position,
@@ -92,9 +108,11 @@ function filteredRecords() {
       item.applicationDate,
       item.submittedAt,
       item.description,
+      item.commitment,
       item.reviewStatus,
       item.reviewer,
-      item.reviewComment
+      item.reviewComment,
+      item.resultPublished ? "已展示" : "未展示"
     ]
       .join(" ")
       .toLowerCase();
@@ -129,7 +147,7 @@ function renderTable() {
   renderSummary(records);
 
   if (records.length === 0) {
-    summaryBody.innerHTML = '<tr><td colspan="13">暂无符合条件的记录。</td></tr>';
+    summaryBody.innerHTML = '<tr><td colspan="17">暂无符合条件的记录。</td></tr>';
     return;
   }
 
@@ -139,17 +157,21 @@ function renderTable() {
       return `
         <tr>
           <td>${index + 1}</td>
+          <td>${escapeHtml(shortId(item.id))}</td>
           <td>${escapeHtml(item.applicantName)}</td>
           <td>${escapeHtml(item.department)}</td>
           <td>${escapeHtml(item.position)}</td>
+          <td>${escapeHtml(item.contact || "")}</td>
           <td>${escapeHtml(item.cardType)}</td>
           <td class="summary-application-content">${escapeHtml(item.description || "")}</td>
-          <td>${escapeHtml(item.contact || "")}</td>
+          <td class="summary-materials">${escapeHtml(materialSummary(item))}</td>
           <td>${escapeHtml(item.applicationDate || "")}</td>
           <td>${escapeHtml(formatDate(item.submittedAt))}</td>
           <td><span class="${statusBadge(status)}">${escapeHtml(status)}</span></td>
           <td>${escapeHtml(item.score || "")}</td>
           <td>${escapeHtml(item.reviewDate || "")}</td>
+          <td>${escapeHtml(publishedLabel(item))}</td>
+          <td>${escapeHtml(item.commitment || "")}</td>
           <td>
             ${
               canDeleteRecords()
@@ -226,7 +248,7 @@ async function loadRecords() {
     if (!response.ok) throw new Error(result.message || "加载失败");
     allRecords = result;
     renderTable();
-    setSummaryMessage("汇总已加载。", "success");
+    setSummaryMessage(`已加载全部 ${allRecords.length} 条申请记录。`, "success");
   } catch (error) {
     setSummaryMessage(error.message, "error");
   } finally {
