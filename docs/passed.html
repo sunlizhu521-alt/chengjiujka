@@ -49,25 +49,37 @@
         </div>
       </section>
 
-      <section class="panel public-passed-panel">
+      <section class="panel summary-table-panel">
         <div class="summary-table-head">
-          <h2>有效期内</h2>
-          <span id="activePassedCount" class="section-count">0 条</span>
+          <h2>榜单明细</h2>
         </div>
-        <div id="activePassedList" class="public-passed-list" aria-live="polite"></div>
-      </section>
-
-      <section class="panel public-passed-panel">
-        <div class="summary-table-head">
-          <h2>已过有效期</h2>
-          <span id="expiredPassedCount" class="section-count">0 条</span>
+        <div class="table-wrap">
+          <table class="summary-table passed-table">
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>申报人姓名</th>
+                <th>人员状态</th>
+                <th>所属部门</th>
+                <th>成就卡项目</th>
+                <th>分值</th>
+                <th>有效状态</th>
+                <th>申报日期</th>
+                <th>评审日期</th>
+              </tr>
+            </thead>
+            <tbody id="passedTableBody">
+              <tr>
+                <td colspan="9">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div id="expiredPassedList" class="public-passed-list" aria-live="polite"></div>
       </section>
     </main>
 
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./nav.js?v=20260702-02" defer></script>
-    <script src="./passed.js?v=20260702-01" defer></script>
+    <script src="./passed.js?v=20260702-02" defer></script>
   </body>
 </html>

@@ -695,6 +695,32 @@ small {
   white-space: nowrap;
 }
 
+.passed-table {
+  min-width: 900px;
+}
+
+.employment-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.employment-badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.employment-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .public-passed-list {
   display: grid;
   gap: 12px;

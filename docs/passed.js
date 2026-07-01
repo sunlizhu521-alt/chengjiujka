@@ -1,9 +1,6 @@
-const activePassedList = document.querySelector("#activePassedList");
-const expiredPassedList = document.querySelector("#expiredPassedList");
+const passedTableBody = document.querySelector("#passedTableBody");
 const passedMessage = document.querySelector("#passedMessage");
 const passedCount = document.querySelector("#passedCount");
-const activePassedCount = document.querySelector("#activePassedCount");
-const expiredPassedCount = document.querySelector("#expiredPassedCount");
 const passedKeyword = document.querySelector("#passedKeyword");
 const passedDepartmentFilter = document.querySelector("#passedDepartmentFilter");
 const passedCardFilter = document.querySelector("#passedCardFilter");
@@ -33,6 +30,10 @@ function apiUrl(path) {
 function setPassedMessage(text, type) {
   passedMessage.textContent = text;
   passedMessage.className = `message ${type || ""}`;
+}
+
+function validityText(value) {
+  return value === "active" ? "有效期内" : "已过有效期";
 }
 
 function uniqueSorted(values) {
@@ -71,7 +72,16 @@ function matchesFilters(item) {
   const department = passedDepartmentFilter.value;
   const cardType = passedCardFilter.value;
   const validity = passedValidityFilter.value;
-  const haystack = [item.applicantName, item.department, item.cardType, item.score, item.applicationDate, item.reviewDate]
+  const haystack = [
+    item.applicantName,
+    item.department,
+    item.cardType,
+    item.score,
+    item.applicationDate,
+    item.reviewDate,
+    item.employmentStatus,
+    validityText(item.validity)
+  ]
     .join(" ")
     .toLowerCase();
 
@@ -83,50 +93,39 @@ function matchesFilters(item) {
   );
 }
 
-function renderPassedList(records) {
+function renderPassedTable(records) {
   if (!records.length) {
-    return '<p class="empty-files">暂无记录。</p>';
+    passedTableBody.innerHTML = '<tr><td colspan="9">暂无记录。</td></tr>';
+    return;
   }
 
-  return `
-    <div class="public-passed-grid">
-      ${records
-        .map(
-          (item) => `
-            <article class="public-passed-card">
-              <div class="public-passed-card-head">
-                <strong>${escapeHtml(item.applicantName)}</strong>
-                <span>${escapeHtml(item.cardType)}</span>
-              </div>
-              <div class="public-passed-meta">
-                <div><span>所属部门</span>${escapeHtml(item.department || "")}</div>
-                <div><span>有效状态</span>${item.validity === "active" ? "有效期内" : "已过有效期"}</div>
-                <div><span>分值</span>${escapeHtml(item.score ? `${item.score}分` : "")}</div>
-                <div><span>申报日期</span>${escapeHtml(item.applicationDate || "")}</div>
-                <div><span>评审日期</span>${escapeHtml(item.reviewDate || "")}</div>
-              </div>
-            </article>
-          `
-        )
-        .join("")}
-    </div>
-  `;
+  passedTableBody.innerHTML = records
+    .map(
+      (item, index) => `
+        <tr>
+          <td data-label="序号">${index + 1}</td>
+          <td data-label="申报人姓名">${escapeHtml(item.applicantName || "")}</td>
+          <td data-label="人员状态">
+            <span class="employment-badge ${item.employmentStatus === "在职" ? "active" : "inactive"}">
+              ${escapeHtml(item.employmentStatus || "已离职")}
+            </span>
+          </td>
+          <td data-label="所属部门">${escapeHtml(item.department || "")}</td>
+          <td data-label="成就卡项目">${escapeHtml(item.cardType || "")}</td>
+          <td data-label="分值">${escapeHtml(item.score ? `${item.score}分` : "")}</td>
+          <td data-label="有效状态">${escapeHtml(validityText(item.validity))}</td>
+          <td data-label="申报日期">${escapeHtml(item.applicationDate || "")}</td>
+          <td data-label="评审日期">${escapeHtml(item.reviewDate || "")}</td>
+        </tr>
+      `
+    )
+    .join("");
 }
 
 function renderPassedRecords() {
   const filtered = passedRecords.filter(matchesFilters);
-  const active = filtered.filter((item) => item.validity === "active");
-  const expired = filtered.filter((item) => item.validity === "expired");
-  const showActive = passedValidityFilter.value !== "expired";
-  const showExpired = passedValidityFilter.value !== "active";
-
-  activePassedList.closest(".public-passed-panel").hidden = !showActive;
-  expiredPassedList.closest(".public-passed-panel").hidden = !showExpired;
-  activePassedList.innerHTML = renderPassedList(active);
-  expiredPassedList.innerHTML = renderPassedList(expired);
   passedCount.textContent = `${filtered.length} 条`;
-  activePassedCount.textContent = `${active.length} 条`;
-  expiredPassedCount.textContent = `${expired.length} 条`;
+  renderPassedTable(filtered);
 }
 
 async function loadPassedRecords() {
@@ -136,15 +135,14 @@ async function loadPassedRecords() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "加载失败");
 
-    const active = (result.active || []).map((item) => ({ ...item, validity: "active" }));
-    const expired = (result.expired || []).map((item) => ({ ...item, validity: "expired" }));
+    const active = (result.active || []).map((item) => ({ ...item, validity: item.validity || "active" }));
+    const expired = (result.expired || []).map((item) => ({ ...item, validity: item.validity || "expired" }));
     passedRecords = [...active, ...expired];
     hydrateFilters();
     renderPassedRecords();
     setPassedMessage("已更新", "success");
   } catch (error) {
-    activePassedList.innerHTML = '<p class="empty-files">加载失败。</p>';
-    expiredPassedList.innerHTML = '<p class="empty-files">暂无记录。</p>';
+    passedTableBody.innerHTML = '<tr><td colspan="9">加载失败。</td></tr>';
     setPassedMessage(error.message, "error");
   }
 }
