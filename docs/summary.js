@@ -88,7 +88,10 @@ function filteredRecords() {
       item.applicantName,
       item.department,
       item.position,
+      item.contact,
       item.applicationDate,
+      item.submittedAt,
+      item.description,
       item.reviewStatus,
       item.reviewer,
       item.reviewComment
@@ -126,7 +129,7 @@ function renderTable() {
   renderSummary(records);
 
   if (records.length === 0) {
-    summaryBody.innerHTML = '<tr><td colspan="12">暂无符合条件的记录。</td></tr>';
+    summaryBody.innerHTML = '<tr><td colspan="13">暂无符合条件的记录。</td></tr>';
     return;
   }
 
@@ -136,15 +139,16 @@ function renderTable() {
       return `
         <tr>
           <td>${index + 1}</td>
-          <td>${escapeHtml(item.cardType)}</td>
           <td>${escapeHtml(item.applicantName)}</td>
           <td>${escapeHtml(item.department)}</td>
           <td>${escapeHtml(item.position)}</td>
+          <td>${escapeHtml(item.cardType)}</td>
+          <td class="summary-application-content">${escapeHtml(item.description || "")}</td>
+          <td>${escapeHtml(item.contact || "")}</td>
           <td>${escapeHtml(item.applicationDate || "")}</td>
+          <td>${escapeHtml(formatDate(item.submittedAt))}</td>
           <td><span class="${statusBadge(status)}">${escapeHtml(status)}</span></td>
           <td>${escapeHtml(item.score || "")}</td>
-          <td>${escapeHtml(item.reviewer || "")}</td>
-          <td class="summary-comment">${escapeHtml(item.reviewComment || "")}</td>
           <td>${escapeHtml(item.reviewDate || "")}</td>
           <td>
             ${

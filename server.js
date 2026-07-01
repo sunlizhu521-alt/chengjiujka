@@ -1018,6 +1018,10 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
 });
 
 app.delete("/api/submissions/:id", requireAdmin, (req, res) => {
+  if (req.authUser.name !== adminName) {
+    return res.status(403).json({ message: "只有管理员孙立柱可以删除申请记录。" });
+  }
+
   const records = readSubmissions();
   const recordIndex = records.findIndex((item) => item.id === req.params.id);
   if (recordIndex === -1) {
