@@ -14,8 +14,7 @@
   --cyan-soft: #eaf8ff;
   --pink-soft: #fff0f7;
   --shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
-  --page-width: 1180px;
-  --page-gutter: 28px;
+  --page-gutter: clamp(14px, 3vw, 32px);
 }
 
 * {
@@ -39,11 +38,10 @@ body {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(0, var(--page-width));
-  justify-content: center;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   min-height: 82px;
-  padding: 14px max(14px, calc(var(--page-gutter) / 2));
+  padding: 14px var(--page-gutter);
   border-bottom: 1px solid rgba(218, 218, 244, 0.9);
   background: rgba(255, 255, 255, 0.82);
   color: #171717;
@@ -210,7 +208,7 @@ button:hover,
 
 .layout,
 .admin-layout {
-  width: min(var(--page-width), calc(100% - var(--page-gutter)));
+  width: calc(100% - (var(--page-gutter) * 2));
   margin: 20px auto 52px;
 }
 
@@ -888,7 +886,7 @@ small {
 
 .summary-table {
   width: 100%;
-  min-width: 1680px;
+  min-width: 0;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -899,6 +897,7 @@ small {
   padding: 10px;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .summary-table th {
@@ -912,20 +911,15 @@ small {
 }
 
 .summary-comment {
-  min-width: 220px;
   overflow-wrap: anywhere;
 }
 
 .summary-application-content {
-  min-width: 260px;
-  max-width: 420px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .summary-materials {
-  min-width: 180px;
-  max-width: 320px;
   overflow-wrap: anywhere;
 }
 
@@ -1683,5 +1677,50 @@ small {
 
   .upload-meta {
     flex-direction: column;
+  }
+
+  .table-wrap {
+    overflow-x: visible;
+  }
+
+  .summary-table,
+  .summary-table tbody,
+  .summary-table tr,
+  .summary-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .summary-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .summary-table tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .summary-table td {
+    display: grid;
+    grid-template-columns: minmax(92px, 32%) minmax(0, 1fr);
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .summary-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .summary-table td::before {
+    content: attr(data-label);
+    color: #30305b;
+    font-weight: 700;
   }
 }

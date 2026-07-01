@@ -156,23 +156,23 @@ function renderTable() {
       const status = normalizeReviewStatus(item.reviewStatus);
       return `
         <tr>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(shortId(item.id))}</td>
-          <td>${escapeHtml(item.applicantName)}</td>
-          <td>${escapeHtml(item.department)}</td>
-          <td>${escapeHtml(item.position)}</td>
-          <td>${escapeHtml(item.contact || "")}</td>
-          <td>${escapeHtml(item.cardType)}</td>
-          <td class="summary-application-content">${escapeHtml(item.description || "")}</td>
-          <td class="summary-materials">${escapeHtml(materialSummary(item))}</td>
-          <td>${escapeHtml(item.applicationDate || "")}</td>
-          <td>${escapeHtml(formatDate(item.submittedAt))}</td>
-          <td><span class="${statusBadge(status)}">${escapeHtml(status)}</span></td>
-          <td>${escapeHtml(item.score || "")}</td>
-          <td>${escapeHtml(item.reviewDate || "")}</td>
-          <td>${escapeHtml(publishedLabel(item))}</td>
-          <td>${escapeHtml(item.commitment || "")}</td>
-          <td>
+          <td data-label="序号">${index + 1}</td>
+          <td data-label="申请编号">${escapeHtml(shortId(item.id))}</td>
+          <td data-label="申报人">${escapeHtml(item.applicantName)}</td>
+          <td data-label="部门">${escapeHtml(item.department)}</td>
+          <td data-label="岗位">${escapeHtml(item.position)}</td>
+          <td data-label="联系方式">${escapeHtml(item.contact || "")}</td>
+          <td data-label="申请项目">${escapeHtml(item.cardType)}</td>
+          <td data-label="申请内容" class="summary-application-content">${escapeHtml(item.description || "")}</td>
+          <td data-label="申请材料" class="summary-materials">${escapeHtml(materialSummary(item))}</td>
+          <td data-label="申报日期">${escapeHtml(item.applicationDate || "")}</td>
+          <td data-label="提交时间">${escapeHtml(formatDate(item.submittedAt))}</td>
+          <td data-label="当前状态"><span class="${statusBadge(status)}">${escapeHtml(status)}</span></td>
+          <td data-label="分值">${escapeHtml(item.score || "")}</td>
+          <td data-label="评审日期">${escapeHtml(item.reviewDate || "")}</td>
+          <td data-label="最终展示">${escapeHtml(publishedLabel(item))}</td>
+          <td data-label="承诺确认">${escapeHtml(item.commitment || "")}</td>
+          <td data-label="操作">
             ${
               canDeleteRecords()
                 ? `<button type="button" class="delete-summary-record-btn danger-button" data-id="${escapeHtml(item.id)}">删除</button>`
