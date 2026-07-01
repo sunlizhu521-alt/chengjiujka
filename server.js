@@ -824,21 +824,22 @@ function addCycle(date, cycle) {
   return result;
 }
 
-function publicPassedRecord(record, validity, rosterNames = new Set()) {
+function publicPassedRecord(record, validity, rosterByName = new Map()) {
+  const rosterEmployee = rosterByName.get(record.applicantName);
   return {
     applicantName: record.applicantName,
-    department: record.department,
+    department: rosterEmployee ? rosterEmployee.department : record.department,
     cardType: record.cardType,
     score: record.score || String(cardScores[record.cardType] || ""),
     applicationDate: record.applicationDate || "",
     reviewDate: record.reviewDate || "",
     validity,
-    employmentStatus: rosterNames.has(record.applicantName) ? "在职" : "已离职"
+    employmentStatus: rosterEmployee ? "在职" : "已离职"
   };
 }
 
 function groupPublicPassedRecords(records, now = new Date()) {
-  const rosterNames = new Set(readRoster().employees.map((employee) => employee.name));
+  const rosterByName = new Map(readRoster().employees.map((employee) => [employee.name, employee]));
   return records.reduce(
     (groups, record) => {
       if (!record.resultPublished || record.reviewStatus !== "通过") {
@@ -847,13 +848,13 @@ function groupPublicPassedRecords(records, now = new Date()) {
 
       const baseDate = parseDateOnly(record.reviewDate) || parseDateOnly(record.applicationDate);
       if (!baseDate) {
-        groups.expired.push(publicPassedRecord(record, "expired", rosterNames));
+        groups.expired.push(publicPassedRecord(record, "expired", rosterByName));
         return groups;
       }
 
       const expiresAt = addCycle(baseDate, cardCycles[record.cardType] || "一年");
       const targetGroup = expiresAt >= now ? "active" : "expired";
-      groups[targetGroup].push(publicPassedRecord(record, targetGroup, rosterNames));
+      groups[targetGroup].push(publicPassedRecord(record, targetGroup, rosterByName));
       return groups;
     },
     { active: [], expired: [] }
