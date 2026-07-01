@@ -1330,6 +1330,64 @@ small {
   min-height: 76px;
 }
 
+.card-config-admin {
+  display: grid;
+  gap: 14px;
+}
+
+.card-config-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.card-config-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.card-config-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 12px 14px;
+  background: #f5f4ff;
+}
+
+.card-config-card summary strong {
+  color: #1f2147;
+  font-size: 17px;
+}
+
+.card-config-card summary span {
+  border: 1px solid #d9d7ff;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--primary);
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.card-config-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.card-config-wide {
+  grid-column: 1 / -1;
+}
+
+.card-config-fields textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
 .admin-message {
   margin-top: 18px;
 }
@@ -1367,6 +1425,7 @@ small {
   .summary-toolbar,
   .login-form,
   .setup-form,
+  .card-config-fields,
   .feedback-upload-form,
   .query-secret-form,
   .query-secret-lookup-form,

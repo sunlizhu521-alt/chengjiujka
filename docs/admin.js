@@ -4,7 +4,7 @@ let authToken = localStorage.getItem("chengjiukaReviewToken") || "";
 let currentUser = null;
 const attachmentImageIndexes = {};
 
-const cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
+let cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
 const reviewMembers = ["孙立柱", "王斌", "惠李伟", "蒋炳兰", "任蒨"];
 
 const loginPanel = document.querySelector("#loginPanel");
@@ -27,6 +27,10 @@ const nextRecordBtn = document.querySelector("#nextRecordBtn");
 const recordsEl = document.querySelector("#records");
 const summaryRow = document.querySelector("#summaryRow");
 const adminMessage = document.querySelector("#adminMessage");
+const cardConfigPanel = document.querySelector("#cardConfigPanel");
+const cardConfigEditor = document.querySelector("#cardConfigEditor");
+const saveCardConfigBtn = document.querySelector("#saveCardConfigBtn");
+const cardConfigMessage = document.querySelector("#cardConfigMessage");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
@@ -73,6 +77,20 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
+async function loadCardDetails() {
+  if (!hasBackend()) return;
+
+  try {
+    const response = await fetch(apiUrl("/api/card-config"));
+    const result = await response.json();
+    if (response.ok && result.cards && typeof result.cards === "object") {
+      cardDetails = result.cards;
+    }
+  } catch {
+    cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
+  }
+}
+
 function authHeaders(extra = {}) {
   return {
     ...extra,
@@ -97,6 +115,89 @@ function badgeClass(status) {
 function renderRuleList(rules) {
   if (!rules || rules.length === 0) return "<p>未配置。</p>";
   return `<ol>${rules.map((rule) => `<li>${escapeHtml(rule)}</li>`).join("")}</ol>`;
+}
+
+function rulesToText(rules) {
+  return Array.isArray(rules) ? rules.join("\n") : "";
+}
+
+function textToRules(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function setCardConfigMessage(text, type) {
+  cardConfigMessage.textContent = text;
+  cardConfigMessage.className = `message ${type || ""}`;
+}
+
+function renderCardConfigEditor() {
+  if (!currentUser || currentUser.role !== "admin") {
+    cardConfigPanel.hidden = true;
+    cardConfigEditor.innerHTML = "";
+    return;
+  }
+
+  cardConfigPanel.hidden = false;
+  cardConfigEditor.innerHTML = Object.entries(cardDetails)
+    .map(([name, detail = {}], index) => {
+      const isOpen = Boolean(String(detail.definition || "").trim());
+      return `
+        <details class="card-config-card" data-card-name="${escapeHtml(name)}" ${index === 0 ? "open" : ""}>
+          <summary>
+            <strong>${escapeHtml(name)}</strong>
+            <span>${isOpen ? "已开放" : "暂未开放"}</span>
+          </summary>
+          <div class="card-config-fields">
+            <label class="field">
+              <span>周期</span>
+              <input name="cycle" value="${escapeHtml(detail.cycle || "")}" />
+            </label>
+            <label class="field">
+              <span>分值</span>
+              <input name="score" type="number" min="0" step="1" value="${escapeHtml(detail.score || "")}" />
+            </label>
+            <label class="field card-config-wide">
+              <span>成就卡定义</span>
+              <textarea name="definition" rows="3">${escapeHtml(detail.definition || "")}</textarea>
+            </label>
+            <label class="field card-config-wide">
+              <span>申请细则</span>
+              <textarea name="applicationRules" rows="6" placeholder="每行一条">${escapeHtml(rulesToText(detail.applicationRules))}</textarea>
+            </label>
+            <label class="field card-config-wide">
+              <span>评审细则</span>
+              <textarea name="reviewRules" rows="6" placeholder="每行一条">${escapeHtml(rulesToText(detail.reviewRules))}</textarea>
+            </label>
+            <label class="field card-config-wide">
+              <span>数据来源</span>
+              <textarea name="sources" rows="3">${escapeHtml(detail.sources || "")}</textarea>
+            </label>
+          </div>
+        </details>
+      `;
+    })
+    .join("");
+}
+
+function collectCardConfigEditor() {
+  const nextCards = {};
+  cardConfigEditor.querySelectorAll(".card-config-card").forEach((cardEl) => {
+    const name = cardEl.dataset.cardName;
+    const scoreValue = cardEl.querySelector('[name="score"]').value;
+    nextCards[name] = {
+      ...(cardDetails[name] || {}),
+      cycle: cardEl.querySelector('[name="cycle"]').value.trim(),
+      score: scoreValue === "" ? "" : Number(scoreValue),
+      definition: cardEl.querySelector('[name="definition"]').value.trim(),
+      applicationRules: textToRules(cardEl.querySelector('[name="applicationRules"]').value),
+      reviewRules: textToRules(cardEl.querySelector('[name="reviewRules"]').value),
+      sources: cardEl.querySelector('[name="sources"]').value.trim()
+    };
+  });
+  return nextCards;
 }
 
 function fileUrl(file, options = {}) {
@@ -482,6 +583,7 @@ function showReviewApp(user) {
   loginPanel.style.display = "none";
   reviewApp.hidden = false;
   reviewApp.style.display = "";
+  renderCardConfigEditor();
 }
 
 function showLogin() {
@@ -565,6 +667,7 @@ loginForm.addEventListener("submit", async (event) => {
     authToken = result.token;
     localStorage.setItem("chengjiukaReviewToken", authToken);
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
+    await loadCardDetails();
     showReviewApp(result.user);
     await loadRecords();
   } catch (error) {
@@ -590,6 +693,7 @@ setupForm.addEventListener("submit", async (event) => {
     authToken = result.token;
     localStorage.setItem("chengjiukaReviewToken", authToken);
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
+    await loadCardDetails();
     showReviewApp(result.user);
     await loadRecords();
   } catch (error) {
@@ -743,6 +847,33 @@ nextRecordBtn.addEventListener("click", () => {
 logoutBtn.addEventListener("click", showLogin);
 loadBtn.addEventListener("click", loadRecords);
 
+saveCardConfigBtn.addEventListener("click", async () => {
+  if (!currentUser || currentUser.role !== "admin") return;
+
+  saveCardConfigBtn.disabled = true;
+  setCardConfigMessage("", "");
+
+  try {
+    const payload = { cards: collectCardConfigEditor() };
+    const response = await fetch(apiUrl("/api/card-config"), {
+      method: "PATCH",
+      headers: authHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "保存失败");
+
+    cardDetails = result.cards || payload.cards;
+    renderCardConfigEditor();
+    renderRecords();
+    setCardConfigMessage(result.message || "成就卡配置已保存。", "success");
+  } catch (error) {
+    setCardConfigMessage(error.message, "error");
+  } finally {
+    saveCardConfigBtn.disabled = false;
+  }
+});
+
 async function restoreSession() {
   if (!authToken || !hasBackend()) return;
   try {
@@ -751,6 +882,7 @@ async function restoreSession() {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "登录已过期");
+    await loadCardDetails();
     showReviewApp(result.user);
     await loadRecords();
   } catch {

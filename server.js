@@ -19,27 +19,88 @@ const dataDir = path.join(storageRoot, "data");
 const uploadDir = path.join(storageRoot, "uploads");
 const submissionsFile = path.join(dataDir, "submissions.json");
 const usersFile = path.join(dataDir, "users.json");
+const cardConfigFile = path.join(dataDir, "card-config.json");
 
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const reviewMemberNames = [adminName, ...reviewerNames];
 const reviewStatuses = new Set(["通过", "不通过", "需补资料"]);
-function loadCardConfig() {
+function loadDefaultCardDetails() {
   const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
   const m = raw.match(/window\.CHENGJIUKA_CARD_DETAILS\s*=\s*(\{[\s\S]*\});?\s*$/);
-  if (!m) return null;
-  const details = new Function("return " + m[1])();
+  if (!m) return {};
+  return new Function("return " + m[1])();
+}
+
+function normalizeRuleList(rules) {
+  if (Array.isArray(rules)) {
+    return rules.map((rule) => String(rule || "").trim()).filter(Boolean);
+  }
+  return String(rules || "")
+    .split(/\r?\n/)
+    .map((rule) => rule.trim())
+    .filter(Boolean);
+}
+
+function normalizeScore(score) {
+  if (score === "" || score === undefined || score === null) return "";
+  const numericScore = Number(score);
+  return Number.isFinite(numericScore) ? numericScore : "";
+}
+
+function normalizeCardDetails(details = {}) {
+  return Object.fromEntries(
+    Object.entries(details).map(([name, detail = {}]) => [
+      name,
+      {
+        definition: String(detail.definition || "").trim(),
+        applicationRules: normalizeRuleList(detail.applicationRules),
+        cycle: String(detail.cycle || "").trim(),
+        score: normalizeScore(detail.score),
+        reviewRules: normalizeRuleList(detail.reviewRules),
+        sources: String(detail.sources || "").trim()
+      }
+    ])
+  );
+}
+
+function loadStoredCardDetails() {
+  if (!fs.existsSync(cardConfigFile)) return null;
+  const content = fs.readFileSync(cardConfigFile, "utf8").replace(/^\uFEFF/, "");
+  return normalizeCardDetails(JSON.parse(content || "{}"));
+}
+
+function buildCardConfig(details) {
   return {
     scores: Object.fromEntries(Object.entries(details).filter(([, d]) => d.score).map(([k, d]) => [k, Number(d.score)])),
     cycles: Object.fromEntries(Object.entries(details).filter(([, d]) => d.cycle).map(([k, d]) => [k, d.cycle])),
     openTypes: new Set(Object.keys(details).filter((k) => details[k].definition))
   };
 }
-const cardConfig = loadCardConfig();
 const fallbackCardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化先锋", "最美工位"]);
-const cardTypes = cardConfig ? cardConfig.openTypes : fallbackCardTypes;
-const cardScores = cardConfig ? cardConfig.scores : { 奋斗者: 10, 分享达人: 10, 业绩之王: 10, 文化先锋: 10, 最美工位: 5 };
-const cardCycles = cardConfig ? cardConfig.cycles : { 奋斗者: "一年", 分享达人: "一年", 业绩之王: "一季度", 文化先锋: "一年", 最美工位: "一季度" };
+const fallbackCardScores = { 奋斗者: 10, 分享达人: 10, 业绩之王: 10, 文化先锋: 10, 最美工位: 5 };
+const fallbackCardCycles = { 奋斗者: "一年", 分享达人: "一年", 业绩之王: "一季度", 文化先锋: "一年", 最美工位: "一季度" };
+const defaultCardDetails = normalizeCardDetails(loadDefaultCardDetails());
+let activeCardDetails = loadStoredCardDetails() || defaultCardDetails;
+let cardConfig = buildCardConfig(activeCardDetails);
+let cardTypes = cardConfig.openTypes.size ? cardConfig.openTypes : fallbackCardTypes;
+let cardScores = Object.keys(cardConfig.scores).length ? cardConfig.scores : fallbackCardScores;
+let cardCycles = Object.keys(cardConfig.cycles).length ? cardConfig.cycles : fallbackCardCycles;
+
+function refreshCardRuntime(details) {
+  activeCardDetails = normalizeCardDetails(details);
+  cardConfig = buildCardConfig(activeCardDetails);
+  cardTypes = cardConfig.openTypes.size ? cardConfig.openTypes : fallbackCardTypes;
+  cardScores = Object.keys(cardConfig.scores).length ? cardConfig.scores : fallbackCardScores;
+  cardCycles = Object.keys(cardConfig.cycles).length ? cardConfig.cycles : fallbackCardCycles;
+}
+
+function writeCardDetails(details) {
+  const normalized = normalizeCardDetails(details);
+  fs.writeFileSync(cardConfigFile, JSON.stringify(normalized, null, 2), "utf8");
+  refreshCardRuntime(normalized);
+  return normalized;
+}
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -609,6 +670,23 @@ app.get("/api/applicants/secret-status", (req, res) => {
 
   const hasSecret = readSubmissions().some((record) => record.applicantName === applicantName && record.querySecretHash);
   res.json({ hasSecret });
+});
+
+app.get("/api/card-config", (req, res) => {
+  res.json({ cards: activeCardDetails });
+});
+
+app.patch("/api/card-config", requireAdmin, (req, res) => {
+  const cards = req.body.cards;
+  if (!cards || typeof cards !== "object" || Array.isArray(cards)) {
+    return res.status(400).json({ message: "成就卡配置格式不正确。" });
+  }
+
+  const normalized = writeCardDetails({ ...defaultCardDetails, ...cards });
+  res.json({
+    message: "成就卡配置已保存。",
+    cards: normalized
+  });
 });
 
 app.get("/api/submissions", requireReviewUser, (req, res) => {

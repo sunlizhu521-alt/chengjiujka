@@ -1,4 +1,4 @@
-const cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
+let cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
 const cardChoices = document.querySelector("#cardChoices");
 const cardFilterButtons = Array.from(document.querySelectorAll(".card-filter-btn"));
 const cardInfo = document.querySelector("#cardInfo");
@@ -265,6 +265,20 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
+async function loadCardDetails() {
+  if (!hasBackend()) return;
+
+  try {
+    const response = await fetch(apiUrl("/api/card-config"));
+    const result = await response.json();
+    if (response.ok && result.cards && typeof result.cards === "object") {
+      cardDetails = result.cards;
+    }
+  } catch {
+    cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
+  }
+}
+
 function updateQuerySecretVisibility(hasSecret) {
   applicantHasHistorySecret = hasSecret;
   querySecretField.hidden = hasSecret;
@@ -432,5 +446,10 @@ resultQueryForm.addEventListener("submit", async (event) => {
   }
 });
 
-renderSelectedFiles();
-renderCardChoices();
+async function initializePage() {
+  renderSelectedFiles();
+  await loadCardDetails();
+  renderCardChoices();
+}
+
+initializePage();
