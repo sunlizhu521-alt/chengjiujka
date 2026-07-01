@@ -104,6 +104,34 @@ function buildCardConfig(details) {
 const fallbackCardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化先锋", "最美工位"]);
 const fallbackCardScores = { 奋斗者: 10, 分享达人: 10, 业绩之王: 10, 文化先锋: 10, 最美工位: 5 };
 const fallbackCardCycles = { 奋斗者: "一年", 分享达人: "一年", 业绩之王: "一季度", 文化先锋: "一年", 最美工位: "一季度" };
+const legacyCardScores = {
+  超级新星: 5,
+  创新达人: 5,
+  服务之星: 5,
+  沟通达人: 5,
+  技术大牛: 7,
+  教练员: 5,
+  金主: 10,
+  经营标杆: 7,
+  卷王: 10,
+  控费能手: 5,
+  六边形战士: 7,
+  魅力领袖: 7,
+  目标达人: 5,
+  数据精英: 5,
+  文化达人: 5,
+  问题终结者: 7,
+  细节达人: 5,
+  项目达人: 5,
+  小蜜蜂: 5,
+  效率达人: 5,
+  协作达人: 5,
+  学习先锋: 5,
+  运动达人: 5,
+  主人翁: 10,
+  AI达人: 5,
+  Balance大师: 5
+};
 const defaultCardDetails = normalizeCardDetails(loadDefaultCardDetails());
 let activeCardDetails = loadStoredCardDetails() || defaultCardDetails;
 let cardConfig = buildCardConfig(activeCardDetails);
@@ -540,7 +568,7 @@ function normalizeImportedJsonRecord(record = {}) {
     commitment: record.commitment || "历史数据导入",
     submittedAt: record.submittedAt || (applicationDate ? `${applicationDate}T00:00:00.000Z` : new Date().toISOString()),
     reviewStatus,
-    score: reviewStatus === "通过" ? String(record.score || cardScores[cardType] || "") : "",
+    score: reviewStatus === "通过" ? scoreForCardType(cardType, record.score) : "",
     reviewComment: record.reviewComment || "",
     reviewer: record.reviewer || "历史数据导入",
     reviewDate: record.reviewDate || (reviewStatus === "待评审" ? "" : applicationDate),
@@ -564,7 +592,7 @@ function normalizeImportedExcelRecord(row = {}, rowNumber, cardMeta) {
   const reviewStatus = importReviewStatus(row);
   const meta = cardMeta.get(cardType) || {};
   const reviewComment = [row["补充说明"], row["二次评审结果"]].map(normalizeImportText).filter(Boolean).join("\n");
-  const score = normalizeImportText(row["成就值"] || row["分值"] || meta.score || cardScores[cardType]);
+  const score = scoreForCardType(cardType, normalizeImportText(row["成就值"] || row["分值"] || meta.score));
 
   return {
     id: createImportId("excel", [rowNumber, applicantName, cardType, applicationDate, row["申请理由"]]),
@@ -800,7 +828,7 @@ function calculateFinalReview(votes, cardType) {
 
   return {
     reviewStatus,
-    score: reviewStatus === "通过" ? String(cardScores[cardType] || "") : "",
+    score: reviewStatus === "通过" ? scoreForCardType(cardType) : "",
     passed,
     rejected,
     needMore,
@@ -824,13 +852,24 @@ function addCycle(date, cycle) {
   return result;
 }
 
+function scoreForCardType(cardType, explicitScore = "") {
+  const recordScore = String(explicitScore ?? "").trim();
+  if (recordScore) return recordScore;
+  const configuredScore = cardScores[cardType];
+  if (configuredScore !== undefined && configuredScore !== null && String(configuredScore).trim()) {
+    return String(configuredScore).trim();
+  }
+  const legacyScore = legacyCardScores[cardType];
+  return legacyScore !== undefined && legacyScore !== null ? String(legacyScore) : "";
+}
+
 function publicPassedRecord(record, validity, rosterByName = new Map()) {
   const rosterEmployee = rosterByName.get(record.applicantName);
   return {
     applicantName: record.applicantName,
     department: rosterEmployee ? rosterEmployee.department : record.department,
     cardType: record.cardType,
-    score: record.score || String(cardScores[record.cardType] || ""),
+    score: scoreForCardType(record.cardType, record.score),
     applicationDate: record.applicationDate || "",
     reviewDate: record.reviewDate || "",
     validity,
