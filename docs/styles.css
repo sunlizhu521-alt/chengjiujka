@@ -66,6 +66,14 @@ body {
   justify-self: end;
 }
 
+.topbar.nav-only {
+  min-height: 64px;
+}
+
+.topbar.nav-only > nav {
+  justify-self: start;
+}
+
 .eyebrow {
   margin: 0 0 2px;
   color: var(--blue);
@@ -133,6 +141,10 @@ button {
   justify-content: flex-end;
 }
 
+.topbar.nav-only .top-actions {
+  justify-content: flex-start;
+}
+
 .auth-mode-tabs {
   display: inline-flex;
   align-items: center;
@@ -186,6 +198,14 @@ button:hover,
 .secondary-link:hover {
   background: var(--purple-soft);
   color: #27265f;
+}
+
+.admin-link.active-link,
+.admin-link.active-link:hover {
+  border-color: rgba(119, 117, 242, 0.18);
+  background: linear-gradient(135deg, #7775f2, #5f5ce6);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(119, 117, 242, 0.22);
 }
 
 .layout,

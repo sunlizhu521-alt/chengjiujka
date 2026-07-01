@@ -1,9 +1,9 @@
 const pageNavItems = [
   { key: "applicationPage", label: "申请页面", href: "./index.html", public: true },
-  { key: "reviewPage", label: "评审页面", href: "./admin.html" },
-  { key: "permissionManagement", label: "权限管理", href: "./admin.html#permissionPanel" },
+  { key: "reviewPage", label: "评审页面", href: "./admin.html#reviewPanel" },
+  { key: "permissionManagement", label: "权限管理", href: "./admin.html#permissionPanel", adminOnly: true },
   { key: "resultSummary", label: "结果汇总", href: "./summary.html" },
-  { key: "infoConfig", label: "信息配置", href: "./admin.html#cardConfigPanel" },
+  { key: "infoConfig", label: "信息配置", href: "./admin.html#cardConfigPanel", adminOnly: true },
   { key: "passed", label: "成就卡榜单", href: "./passed.html", public: true, secondary: true }
 ];
 
@@ -30,10 +30,17 @@ function normalizedNavAccess(user) {
   return [...new Set(access.map((key) => legacyPageKeyMapForNav[key] || key))];
 }
 
+function isNavAdmin(user) {
+  return user && (user.role === "admin" || user.name === "孙立柱");
+}
+
 function isCurrentNavItem(href) {
   const current = window.location.pathname.split("/").pop() || "index.html";
-  const target = href.replace("./", "").split("#")[0];
-  return current === target;
+  const [target, hash = ""] = href.replace("./", "").split("#");
+  if (current !== target) return false;
+  if (!hash) return true;
+  const currentHash = window.location.hash.replace("#", "");
+  return currentHash === hash || (current === "admin.html" && hash === "reviewPanel" && !currentHash);
 }
 
 function renderPageNav() {
@@ -45,13 +52,14 @@ function renderPageNav() {
   const items = pageNavItems.filter((item) => {
     if (item.key === "passed") return true;
     if (!user && item.public) return true;
+    if (item.adminOnly) return isNavAdmin(user);
     return access.has(item.key);
   });
 
   nav.innerHTML = items
     .map((item) => {
-      const classNames = ["admin-link"];
-      if (item.secondary || isCurrentNavItem(item.href)) classNames.push("secondary-link");
+      const classNames = ["admin-link", "secondary-link"];
+      if (isCurrentNavItem(item.href)) classNames.push("active-link");
       return `<a class="${classNames.join(" ")}" href="${item.href}">${item.label}</a>`;
     })
     .join("");

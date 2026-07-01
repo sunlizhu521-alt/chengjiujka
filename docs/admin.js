@@ -38,6 +38,8 @@ const loadBtn = document.querySelector("#loadBtn");
 const prevRecordBtn = document.querySelector("#prevRecordBtn");
 const nextRecordBtn = document.querySelector("#nextRecordBtn");
 const recordsEl = document.querySelector("#records");
+const reviewPanel = document.querySelector("#reviewPanel");
+const reviewToolbar = document.querySelector("#reviewToolbar");
 const summaryRow = document.querySelector("#summaryRow");
 const adminMessage = document.querySelector("#adminMessage");
 const cardConfigPanel = document.querySelector("#cardConfigPanel");
@@ -101,6 +103,44 @@ function isAdminUser(user = currentUser) {
 function hasPageAccess(page, user = currentUser) {
   if (isAdminUser(user)) return true;
   return Array.isArray(user?.pageAccess) && user.pageAccess.includes(page);
+}
+
+function currentAdminModule() {
+  if (window.location.hash === "#permissionPanel") return "permission";
+  if (window.location.hash === "#cardConfigPanel") return "config";
+  return "review";
+}
+
+function applyAdminModule() {
+  if (!currentUser) return;
+  const module = currentAdminModule();
+  const showReview = module === "review" && hasPageAccess("reviewPage");
+  const showPermission = module === "permission" && isAdminUser();
+  const showConfig = module === "config" && isAdminUser();
+
+  if ((module === "permission" && !showPermission) || (module === "config" && !showConfig)) {
+    if (hasPageAccess("reviewPage")) {
+      window.location.hash = "reviewPanel";
+      return;
+    }
+  }
+
+  reviewPanel.hidden = false;
+  reviewToolbar.hidden = !showReview;
+  summaryRow.hidden = !showReview;
+  recordsEl.hidden = !showReview;
+  adminMessage.hidden = !showReview;
+  cardConfigPanel.hidden = !showConfig;
+  permissionPanel.hidden = !showPermission;
+
+  if (module === "permission" && !showPermission) {
+    setAdminMessage("当前账号暂无权限管理权限。", "error");
+  }
+  if (module === "config" && !showConfig) {
+    setAdminMessage("当前账号暂无信息配置权限。", "error");
+  }
+
+  if (typeof renderPageNav === "function") renderPageNav();
 }
 
 function setAuthMode(mode) {
@@ -308,6 +348,7 @@ async function loadPermissionUsers() {
     permissionPages = result.pages || permissionPages;
     permissionUsers = result.users || [];
     renderPermissionPanel();
+    applyAdminModule();
     setPermissionMessage("用户权限已加载。", "success");
   } catch (error) {
     setPermissionMessage(error.message, "error");
@@ -700,6 +741,7 @@ function showReviewApp(user) {
   reviewApp.style.display = "";
   renderCardConfigEditor();
   renderPermissionPanel();
+  applyAdminModule();
   if (typeof renderPageNav === "function") renderPageNav();
 }
 
@@ -1001,6 +1043,7 @@ nextRecordBtn.addEventListener("click", () => {
 logoutBtn.addEventListener("click", showLogin);
 loadBtn.addEventListener("click", loadRecords);
 loadUsersBtn.addEventListener("click", loadPermissionUsers);
+window.addEventListener("hashchange", applyAdminModule);
 
 permissionList.addEventListener("click", async (event) => {
   const card = event.target.closest(".permission-card");
@@ -1020,6 +1063,7 @@ permissionList.addEventListener("click", async (event) => {
       if (!response.ok) throw new Error(result.message || "保存授权失败");
       permissionUsers = permissionUsers.map((user) => (user.name === result.user.name ? result.user : user));
       renderPermissionPanel();
+      applyAdminModule();
       setPermissionMessage(result.message || "用户权限已保存。", "success");
       return;
     }
@@ -1047,6 +1091,7 @@ permissionList.addEventListener("click", async (event) => {
       if (!response.ok) throw new Error(result.message || "删除账号失败");
       permissionUsers = result.users || permissionUsers.filter((user) => user.name !== userName);
       renderPermissionPanel();
+      applyAdminModule();
       setPermissionMessage(result.message || "用户已删除。", "success");
     }
   } catch (error) {
@@ -1072,6 +1117,7 @@ saveCardConfigBtn.addEventListener("click", async () => {
 
     cardDetails = result.cards || payload.cards;
     renderCardConfigEditor();
+    applyAdminModule();
     renderRecords();
     setCardConfigMessage(result.message || "成就卡配置已保存。", "success");
   } catch (error) {
