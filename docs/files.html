@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>文件维护</title>
+    <link rel="stylesheet" href="./styles.css?v=20260702-02" />
+  </head>
+  <body>
+    <header class="topbar nav-only">
+      <nav class="top-actions" data-page-nav aria-label="页面导航"></nav>
+    </header>
+
+    <main class="admin-layout">
+      <section class="panel login-panel" id="loginPanel">
+        <div>
+          <h2>文件维护登录</h2>
+          <p>仅孙立柱管理员可导入历史数据和花名册。</p>
+        </div>
+        <form class="login-form" id="loginForm">
+          <label class="field">
+            <span>管理员姓名</span>
+            <select id="loginName" name="name" required>
+              <option value="孙立柱">孙立柱</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>管理员秘钥</span>
+            <input id="loginSecret" name="secret" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit">登录</button>
+        </form>
+        <p id="loginMessage" class="message" role="status"></p>
+      </section>
+
+      <section id="maintenanceApp" hidden>
+        <section class="summary-row" id="statusCards"></section>
+
+        <section class="panel maintenance-grid">
+          <article class="maintenance-card">
+            <div>
+              <h2>历史数据导入</h2>
+              <p>支持上传本地已导出的 submissions.json，或历史申请 Excel。Excel 导入时可选上传成就值体系维表，用于补充分值。</p>
+            </div>
+            <form id="historyImportForm" class="maintenance-form">
+              <label class="field">
+                <span>历史申请数据 <b>*</b></span>
+                <input id="historyFileInput" type="file" name="historyFile" accept=".json,.xlsx,.xls,.csv" required />
+              </label>
+              <label class="field">
+                <span>成就值体系维表</span>
+                <input id="cardDimFileInput" type="file" name="cardDimFile" accept=".xlsx,.xls,.csv" />
+              </label>
+              <button type="submit">导入历史数据</button>
+            </form>
+            <p id="historyImportMessage" class="message" role="status"></p>
+          </article>
+
+          <article class="maintenance-card">
+            <div>
+              <h2>花名册导入</h2>
+              <p>用于申请页“所属部门”下拉和按姓名自动带出部门。Excel 表头需包含“姓名”和“一级部门”。</p>
+            </div>
+            <form id="rosterImportForm" class="maintenance-form">
+              <label class="field">
+                <span>花名册文件 <b>*</b></span>
+                <input id="rosterFileInput" type="file" name="rosterFile" accept=".xlsx,.xls,.csv" required />
+              </label>
+              <button type="submit">导入花名册</button>
+            </form>
+            <p id="rosterImportMessage" class="message" role="status"></p>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <script src="./config.js?v=20260701-01" defer></script>
+    <script src="./nav.js?v=20260702-02" defer></script>
+    <script src="./files.js?v=20260702-01" defer></script>
+  </body>
+</html>

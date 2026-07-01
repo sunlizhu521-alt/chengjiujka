@@ -628,6 +628,40 @@ small {
   align-items: end;
 }
 
+.maintenance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.maintenance-card {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 18px;
+}
+
+.maintenance-card h2 {
+  margin: 0 0 8px;
+}
+
+.maintenance-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.maintenance-form {
+  display: grid;
+  gap: 12px;
+}
+
+.maintenance-form button {
+  justify-self: start;
+}
+
 .query-result {
   display: grid;
   gap: 12px;
@@ -1664,6 +1698,7 @@ small {
   .layout,
   .toolbar,
   .summary-toolbar,
+  .maintenance-grid,
   .login-form,
   .setup-form,
   .card-config-fields,

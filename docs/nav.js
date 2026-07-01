@@ -4,6 +4,7 @@ const pageNavItems = [
   { key: "permissionManagement", label: "权限管理", href: "./admin.html#permissionPanel", adminOnly: true },
   { key: "resultSummary", label: "结果汇总", href: "./summary.html" },
   { key: "infoConfig", label: "信息配置", href: "./admin.html#cardConfigPanel", adminOnly: true },
+  { key: "fileMaintenance", label: "文件维护", href: "./files.html", adminOnly: true },
   { key: "passed", label: "成就卡榜单", href: "./passed.html", public: true, secondary: true }
 ];
 
@@ -24,7 +25,7 @@ function readNavUser() {
 function normalizedNavAccess(user) {
   if (!user) return [];
   if (user.role === "admin" || user.name === "孙立柱") {
-    return ["applicationPage", "reviewPage", "permissionManagement", "resultSummary", "infoConfig"];
+    return ["applicationPage", "reviewPage", "permissionManagement", "resultSummary", "infoConfig", "fileMaintenance"];
   }
   const access = Array.isArray(user.pageAccess) ? user.pageAccess : [];
   return [...new Set(access.map((key) => legacyPageKeyMapForNav[key] || key))];

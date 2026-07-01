@@ -33,7 +33,8 @@ const pagePermissions = [
   { key: "reviewPage", label: "评审页面" },
   { key: "permissionManagement", label: "权限管理" },
   { key: "resultSummary", label: "结果汇总" },
-  { key: "infoConfig", label: "信息配置" }
+  { key: "infoConfig", label: "信息配置" },
+  { key: "fileMaintenance", label: "文件维护" }
 ];
 const pagePermissionKeys = pagePermissions.map((item) => item.key);
 const legacyPageKeyMap = {
@@ -443,6 +444,213 @@ function writeRoster(roster) {
   };
   writeJsonAtomic(rosterFile, normalized);
   return normalized;
+}
+
+function normalizeImportText(value) {
+  return String(value ?? "").trim();
+}
+
+function normalizeImportDate(value) {
+  if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = normalizeImportText(value).replace(/\./g, "/").replace(/-/g, "/");
+  const match = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+  if (match) {
+    const [, year, month, day] = match;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString().slice(0, 10);
+}
+
+function createImportId(prefix, parts) {
+  const source = parts.map(normalizeImportText).join("|");
+  return `${prefix}-${crypto.createHash("sha1").update(source).digest("hex").slice(0, 18)}`;
+}
+
+function importReviewStatus(row = {}) {
+  const status = normalizeImportText(row["通过情况"] || row["二次评审结果"] || row.reviewStatus);
+  if (status.includes("不通过") || status.includes("驳回")) return "不通过";
+  if (status.includes("补")) return "需补资料";
+  if (status.includes("通过")) return "通过";
+  return "待评审";
+}
+
+function buildImportDescription(row = {}) {
+  const sections = [
+    ["申请理由", row["申请理由"] || row.description],
+    ["推荐人", row["推荐人"]],
+    ["推荐理由", row["推荐理由"]],
+    ["补充说明", row["补充说明"]],
+    ["二次评审结果", row["二次评审结果"]]
+  ];
+  return sections
+    .map(([label, value]) => {
+      const content = normalizeImportText(value);
+      return content ? `${label}：${content}` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function loadImportCardMeta(filePath) {
+  const meta = new Map();
+  if (!filePath || !fs.existsSync(filePath)) return meta;
+
+  const workbook = xlsx.readFile(filePath, { cellDates: true });
+  workbook.SheetNames.forEach((sheetName) => {
+    const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "", raw: false });
+    rows.forEach((row) => {
+      const cardName = normalizeImportText(row["成就卡名称"] || row.cardType);
+      if (!cardName || meta.has(cardName)) return;
+      meta.set(cardName, {
+        category: normalizeImportText(row["成就卡类型"] || row.category),
+        score: normalizeImportText(row["成就值"] || row["分值"] || row.score),
+        validMonths: normalizeImportText(row["成就卡有效期（月）"] || row.validMonths)
+      });
+    });
+  });
+  return meta;
+}
+
+function normalizeImportedJsonRecord(record = {}) {
+  const cardType = normalizeImportText(record.cardType || record["成就卡名称"]);
+  const applicantName = normalizeImportText(record.applicantName || record["姓名"]);
+  if (!cardType || !applicantName) return null;
+
+  const reviewStatus = importReviewStatus(record);
+  const applicationDate = normalizeImportDate(record.applicationDate || record["申请日期"]);
+  return {
+    ...record,
+    id: record.id || createImportId("json", [applicantName, cardType, applicationDate, record.submittedAt]),
+    cardType,
+    applicantName,
+    department: normalizeImportText(record.department || record["部门"]),
+    position: normalizeImportText(record.position || record["岗位"]),
+    contact: normalizeImportText(record.contact || record["联系方式"]),
+    applicationDate,
+    description: normalizeImportText(record.description) || buildImportDescription(record) || "历史数据导入",
+    querySecretHash: record.querySecretHash || "",
+    querySecretPlain: record.querySecretPlain || "",
+    querySecretInherited: Boolean(record.querySecretInherited),
+    commitment: record.commitment || "历史数据导入",
+    submittedAt: record.submittedAt || (applicationDate ? `${applicationDate}T00:00:00.000Z` : new Date().toISOString()),
+    reviewStatus,
+    score: reviewStatus === "通过" ? String(record.score || cardScores[cardType] || "") : "",
+    reviewComment: record.reviewComment || "",
+    reviewer: record.reviewer || "历史数据导入",
+    reviewDate: record.reviewDate || (reviewStatus === "待评审" ? "" : applicationDate),
+    reviewVotes: record.reviewVotes || {},
+    reviewSummary: record.reviewSummary || {},
+    finalPublicComment: record.finalPublicComment || record.reviewComment || "历史数据导入",
+    resultPublished: Boolean(record.resultPublished || reviewStatus === "通过"),
+    resultPublishedAt: record.resultPublishedAt || (reviewStatus === "通过" ? new Date().toISOString() : ""),
+    resultPublishedBy: record.resultPublishedBy || (reviewStatus === "通过" ? "历史数据导入" : ""),
+    attachments: Array.isArray(record.attachments) ? record.attachments : [],
+    feedbackFiles: Array.isArray(record.feedbackFiles) ? record.feedbackFiles : []
+  };
+}
+
+function normalizeImportedExcelRecord(row = {}, rowNumber, cardMeta) {
+  const applicantName = normalizeImportText(row["姓名"] || row.applicantName);
+  const cardType = normalizeImportText(row["成就卡名称"] || row.cardType);
+  if (!applicantName || !cardType) return null;
+
+  const applicationDate = normalizeImportDate(row["申请日期"] || row.applicationDate);
+  const reviewStatus = importReviewStatus(row);
+  const meta = cardMeta.get(cardType) || {};
+  const reviewComment = [row["补充说明"], row["二次评审结果"]].map(normalizeImportText).filter(Boolean).join("\n");
+  const score = normalizeImportText(row["成就值"] || row["分值"] || meta.score || cardScores[cardType]);
+
+  return {
+    id: createImportId("excel", [rowNumber, applicantName, cardType, applicationDate, row["申请理由"]]),
+    cardType,
+    applicantName,
+    department: normalizeImportText(row["部门"] || row.department),
+    position: normalizeImportText(row["岗位"] || row.position),
+    contact: normalizeImportText(row["联系方式"] || row.contact),
+    applicationDate,
+    description: buildImportDescription(row) || "历史数据导入",
+    querySecretHash: "",
+    querySecretPlain: "",
+    querySecretInherited: false,
+    commitment: "历史数据导入",
+    submittedAt: applicationDate ? `${applicationDate}T00:00:00.000Z` : new Date().toISOString(),
+    reviewStatus,
+    score: reviewStatus === "通过" ? score : "",
+    reviewComment,
+    reviewer: "历史数据导入",
+    reviewDate: reviewStatus === "待评审" ? "" : applicationDate,
+    reviewVotes: {},
+    reviewSummary: {},
+    finalPublicComment: reviewComment || "历史数据导入",
+    resultPublished: reviewStatus === "通过",
+    resultPublishedAt: reviewStatus === "通过" ? new Date().toISOString() : "",
+    resultPublishedBy: reviewStatus === "通过" ? "历史数据导入" : "",
+    attachments: [],
+    feedbackFiles: [],
+    legacySource: {
+      type: "excel-upload",
+      rowNumber,
+      cardCategory: normalizeImportText(row["成就卡类别"] || meta.category),
+      validMonths: normalizeImportText(row["成就卡有效期（月）"] || meta.validMonths)
+    }
+  };
+}
+
+function parseHistoryImportFiles(historyFile, cardDimFile) {
+  const ext = path.extname(historyFile.originalname || historyFile.filename).toLowerCase();
+  if (ext === ".json") {
+    const payload = JSON.parse(fs.readFileSync(historyFile.path, "utf8").replace(/^\uFEFF/, "") || "[]");
+    const records = Array.isArray(payload) ? payload : Array.isArray(payload.records) ? payload.records : [];
+    return records.map(normalizeImportedJsonRecord).filter(Boolean);
+  }
+
+  if (![".xlsx", ".xls", ".csv"].includes(ext)) {
+    throw new Error("历史数据仅支持 .json、.xlsx、.xls、.csv 文件。");
+  }
+
+  const cardMeta = loadImportCardMeta(cardDimFile?.path);
+  const workbook = xlsx.readFile(historyFile.path, { cellDates: true });
+  const sheetName = workbook.SheetNames.find((name) => name.includes("申请")) || workbook.SheetNames[0];
+  if (!sheetName) throw new Error("历史数据文件没有可读取的工作表。");
+  const rows = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "", raw: false });
+  return rows.map((row, index) => normalizeImportedExcelRecord(row, index + 2, cardMeta)).filter(Boolean);
+}
+
+function mergeImportedSubmissions(importedRecords) {
+  const records = readSubmissions();
+  const existingIds = new Set(records.map((record) => record.id));
+  const existingFingerprints = new Set(
+    records.map((record) =>
+      [record.applicantName, record.cardType, record.applicationDate, normalizeImportText(record.description)]
+        .map(normalizeImportText)
+        .join("|")
+    )
+  );
+  let added = 0;
+  let skipped = 0;
+
+  importedRecords.forEach((record) => {
+    const fingerprint = [record.applicantName, record.cardType, record.applicationDate, normalizeImportText(record.description)]
+      .map(normalizeImportText)
+      .join("|");
+    if (existingIds.has(record.id) || existingFingerprints.has(fingerprint)) {
+      skipped += 1;
+      return;
+    }
+    records.push(record);
+    existingIds.add(record.id);
+    existingFingerprints.add(fingerprint);
+    added += 1;
+  });
+
+  writeSubmissions(records);
+  return { added, skipped, total: records.length };
 }
 
 function normalizeFileList(files = []) {
@@ -967,6 +1175,28 @@ app.get("/api/roster", (req, res) => {
   res.json(readRoster());
 });
 
+app.get("/api/maintenance/status", requireAdmin, (req, res) => {
+  const submissions = readSubmissions();
+  const statusCounts = submissions.reduce((counts, record) => {
+    const status = record.reviewStatus || "待评审";
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+  res.json({
+    submissions: {
+      total: submissions.length,
+      statusCounts,
+      publishedPassed: submissions.filter((record) => record.resultPublished && record.reviewStatus === "通过").length,
+      lastSubmittedAt: submissions
+        .map((record) => record.submittedAt || "")
+        .filter(Boolean)
+        .sort()
+        .at(-1) || ""
+    },
+    roster: readRoster()
+  });
+});
+
 app.post("/api/roster/import", requireAdmin, upload.single("rosterFile"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "请选择要导入的花名册 Excel 文件。" });
@@ -989,6 +1219,40 @@ app.post("/api/roster/import", requireAdmin, upload.single("rosterFile"), (req, 
     fs.rm(req.file.path, { force: true }, () => {});
   }
 });
+
+app.post(
+  "/api/history/import",
+  requireAdmin,
+  upload.fields([
+    { name: "historyFile", maxCount: 1 },
+    { name: "cardDimFile", maxCount: 1 }
+  ]),
+  (req, res) => {
+    const historyFile = req.files?.historyFile?.[0];
+    const cardDimFile = req.files?.cardDimFile?.[0];
+
+    if (!historyFile) {
+      return res.status(400).json({ message: "请选择历史申请数据文件。" });
+    }
+
+    try {
+      const importedRecords = parseHistoryImportFiles(historyFile, cardDimFile);
+      if (!importedRecords.length) {
+        return res.status(400).json({ message: "未读取到可导入的历史申请记录。" });
+      }
+
+      const result = mergeImportedSubmissions(importedRecords);
+      res.json({
+        message: `历史数据导入完成，新增 ${result.added} 条，跳过重复 ${result.skipped} 条，当前共 ${result.total} 条。`,
+        ...result
+      });
+    } catch (error) {
+      res.status(400).json({ message: error.message || "历史数据导入失败。" });
+    } finally {
+      [historyFile, cardDimFile].filter(Boolean).forEach((file) => fs.rm(file.path, { force: true }, () => {}));
+    }
+  }
+);
 
 app.get("/api/card-config", (req, res) => {
   res.json({ cards: activeCardDetails });
