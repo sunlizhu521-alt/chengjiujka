@@ -12,10 +12,47 @@
     </header>
 
     <main class="layout public-passed-layout">
+      <section class="panel public-passed-filter">
+        <div class="summary-table-head">
+          <div>
+            <h2>成就卡榜单</h2>
+            <p id="passedMessage" class="message" role="status"></p>
+          </div>
+          <strong id="passedCount" class="filter-count">0 条</strong>
+        </div>
+        <div class="passed-filter-grid">
+          <label class="field">
+            <span>关键词</span>
+            <input id="passedKeyword" placeholder="姓名、部门、成就卡项目" />
+          </label>
+          <label class="field">
+            <span>部门</span>
+            <select id="passedDepartmentFilter">
+              <option value="">全部部门</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>成就卡项目</span>
+            <select id="passedCardFilter">
+              <option value="">全部项目</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>有效状态</span>
+            <select id="passedValidityFilter">
+              <option value="">全部</option>
+              <option value="active">有效期内</option>
+              <option value="expired">已过有效期</option>
+            </select>
+          </label>
+          <button id="passedResetBtn" type="button" class="secondary-button">重置筛选</button>
+        </div>
+      </section>
+
       <section class="panel public-passed-panel">
         <div class="summary-table-head">
           <h2>有效期内</h2>
-          <p id="passedMessage" class="message" role="status"></p>
+          <span id="activePassedCount" class="section-count">0 条</span>
         </div>
         <div id="activePassedList" class="public-passed-list" aria-live="polite"></div>
       </section>
@@ -23,6 +60,7 @@
       <section class="panel public-passed-panel">
         <div class="summary-table-head">
           <h2>已过有效期</h2>
+          <span id="expiredPassedCount" class="section-count">0 条</span>
         </div>
         <div id="expiredPassedList" class="public-passed-list" aria-live="polite"></div>
       </section>
@@ -30,6 +68,6 @@
 
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./nav.js?v=20260702-02" defer></script>
-    <script src="./passed.js?v=20260612-05" defer></script>
+    <script src="./passed.js?v=20260702-01" defer></script>
   </body>
 </html>

@@ -671,6 +671,30 @@ small {
   overflow: hidden;
 }
 
+.public-passed-filter {
+  display: grid;
+  gap: 14px;
+}
+
+.passed-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(140px, 1fr) minmax(130px, 0.8fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.filter-count,
+.section-count {
+  align-self: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-dark);
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .public-passed-list {
   display: grid;
   gap: 12px;
@@ -1699,6 +1723,7 @@ small {
   .toolbar,
   .summary-toolbar,
   .maintenance-grid,
+  .passed-filter-grid,
   .login-form,
   .setup-form,
   .card-config-fields,
