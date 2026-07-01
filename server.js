@@ -348,7 +348,9 @@ function readUsers() {
 }
 
 function writeUsers(users) {
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2), "utf8");
+  const tmp = usersFile + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(users, null, 2), "utf8");
+  fs.renameSync(tmp, usersFile);
 }
 
 function publicUser(user) {
@@ -367,7 +369,9 @@ function readSubmissions() {
 }
 
 function writeSubmissions(records) {
-  fs.writeFileSync(submissionsFile, JSON.stringify(records, null, 2), "utf8");
+  const tmp = submissionsFile + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(records, null, 2), "utf8");
+  fs.renameSync(tmp, submissionsFile);
 }
 
 function normalizeFileList(files = []) {
