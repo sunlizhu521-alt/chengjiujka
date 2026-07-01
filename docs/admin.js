@@ -30,7 +30,6 @@ const setupForm = document.querySelector("#setupForm");
 const setupSecret = document.querySelector("#setupSecret");
 const loginMessage = document.querySelector("#loginMessage");
 const currentUserLabel = document.querySelector("#currentUserLabel");
-const summaryEntry = document.querySelector("#summaryEntry");
 const logoutBtn = document.querySelector("#logoutBtn");
 const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
@@ -695,14 +694,13 @@ function showReviewApp(user) {
   currentUser = user;
   const roleLabel = user.role === "admin" ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户";
   currentUserLabel.textContent = `${user.name}（${roleLabel}）`;
-  summaryEntry.hidden = !hasPageAccess("resultSummary", user);
-  summaryEntry.style.display = hasPageAccess("resultSummary", user) ? "" : "none";
   loginPanel.hidden = true;
   loginPanel.style.display = "none";
   reviewApp.hidden = false;
   reviewApp.style.display = "";
   renderCardConfigEditor();
   renderPermissionPanel();
+  if (typeof renderPageNav === "function") renderPageNav();
 }
 
 function showLogin() {
@@ -710,8 +708,6 @@ function showLogin() {
   authToken = "";
   localStorage.removeItem("chengjiukaReviewToken");
   localStorage.removeItem("chengjiukaReviewUser");
-  summaryEntry.hidden = true;
-  summaryEntry.style.display = "none";
   loginPanel.hidden = false;
   loginPanel.style.display = "";
   reviewApp.hidden = true;
@@ -720,6 +716,7 @@ function showLogin() {
   setAuthMode("login");
   allRecords = [];
   permissionUsers = [];
+  if (typeof renderPageNav === "function") renderPageNav();
 }
 
 async function loadRecords() {

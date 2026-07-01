@@ -176,6 +176,7 @@ async function loadRecords() {
       localStorage.removeItem("chengjiukaReviewToken");
     } else {
       currentUser = meResult.user;
+      if (typeof renderPageNav === "function") renderPageNav();
     }
   }
 
@@ -205,6 +206,8 @@ async function loadRecords() {
     authToken = loginResult.token;
     currentUser = loginResult.user;
     localStorage.setItem("chengjiukaReviewToken", authToken);
+    localStorage.setItem("chengjiukaReviewUser", JSON.stringify(loginResult.user));
+    if (typeof renderPageNav === "function") renderPageNav();
   }
 
   loadBtn.disabled = true;
