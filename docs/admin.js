@@ -7,10 +7,11 @@ const attachmentImageIndexes = {};
 let cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
 const reviewMembers = ["孙立柱", "王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const pageLabels = {
-  reviewDesk: "评审工作台",
-  summary: "结果汇总",
-  cardConfig: "成就卡配置",
-  permissionManagement: "权限管理"
+  applicationPage: "申请页面",
+  reviewPage: "评审页面",
+  permissionManagement: "权限管理",
+  resultSummary: "结果汇总",
+  infoConfig: "信息配置"
 };
 let permissionPages = Object.entries(pageLabels).map(([key, label]) => ({ key, label }));
 let permissionUsers = [];
@@ -694,8 +695,8 @@ function showReviewApp(user) {
   currentUser = user;
   const roleLabel = user.role === "admin" ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户";
   currentUserLabel.textContent = `${user.name}（${roleLabel}）`;
-  summaryEntry.hidden = !hasPageAccess("summary", user);
-  summaryEntry.style.display = hasPageAccess("summary", user) ? "" : "none";
+  summaryEntry.hidden = !hasPageAccess("resultSummary", user);
+  summaryEntry.style.display = hasPageAccess("resultSummary", user) ? "" : "none";
   loginPanel.hidden = true;
   loginPanel.style.display = "none";
   reviewApp.hidden = false;
@@ -730,8 +731,8 @@ async function loadRecords() {
     setAdminMessage("请先登录评审账号。", "error");
     return;
   }
-  if (!hasPageAccess("reviewDesk")) {
-    setAdminMessage("当前账号暂无评审工作台权限。", "error");
+  if (!hasPageAccess("reviewPage")) {
+    setAdminMessage("当前账号暂无评审页面权限。", "error");
     return;
   }
 
@@ -793,7 +794,7 @@ loginForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    if (hasPageAccess("reviewDesk", result.user)) await loadRecords();
+    if (hasPageAccess("reviewPage", result.user)) await loadRecords();
     if (isAdminUser(result.user)) await loadPermissionUsers();
   } catch (error) {
     setLoginMessage(error.message, "error");
@@ -820,7 +821,7 @@ setupForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    if (hasPageAccess("reviewDesk", result.user)) await loadRecords();
+    if (hasPageAccess("reviewPage", result.user)) await loadRecords();
     if (isAdminUser(result.user)) await loadPermissionUsers();
   } catch (error) {
     setLoginMessage(error.message, "error");
@@ -1093,7 +1094,7 @@ async function restoreSession() {
     if (!response.ok) throw new Error(result.message || "登录已过期");
     await loadCardDetails();
     showReviewApp(result.user);
-    if (hasPageAccess("reviewDesk", result.user)) await loadRecords();
+    if (hasPageAccess("reviewPage", result.user)) await loadRecords();
     if (isAdminUser(result.user)) await loadPermissionUsers();
   } catch {
     showLogin();

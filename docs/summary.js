@@ -43,7 +43,8 @@ function authHeaders(extra = {}) {
 }
 
 function canViewSummary(user) {
-  return user && (user.role === "admin" || (Array.isArray(user.pageAccess) && user.pageAccess.includes("summary")));
+  const access = Array.isArray(user?.pageAccess) ? user.pageAccess : [];
+  return user && (user.role === "admin" || access.includes("resultSummary") || access.includes("summary"));
 }
 
 function canDeleteRecords(user = currentUser) {

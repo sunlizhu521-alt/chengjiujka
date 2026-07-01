@@ -27,13 +27,19 @@ const reviewMemberNames = [adminName, ...reviewerNames];
 const reviewStatuses = new Set(["通过", "不通过", "需补资料"]);
 const userRoleName = "user";
 const pagePermissions = [
-  { key: "reviewDesk", label: "评审工作台" },
-  { key: "summary", label: "结果汇总" },
-  { key: "cardConfig", label: "成就卡配置" },
-  { key: "permissionManagement", label: "权限管理" }
+  { key: "applicationPage", label: "申请页面" },
+  { key: "reviewPage", label: "评审页面" },
+  { key: "permissionManagement", label: "权限管理" },
+  { key: "resultSummary", label: "结果汇总" },
+  { key: "infoConfig", label: "信息配置" }
 ];
 const pagePermissionKeys = pagePermissions.map((item) => item.key);
-const defaultReviewerAccess = ["reviewDesk"];
+const legacyPageKeyMap = {
+  reviewDesk: "reviewPage",
+  summary: "resultSummary",
+  cardConfig: "infoConfig"
+};
+const defaultReviewerAccess = ["applicationPage", "reviewPage"];
 
 function loadDefaultCardDetails() {
   const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
@@ -218,7 +224,8 @@ function normalizePageAccess(user) {
     : user.role === "reviewer"
       ? defaultReviewerAccess
       : [];
-  return [...new Set(source.filter((key) => pagePermissionKeys.includes(key)))];
+  const normalized = source.map((key) => legacyPageKeyMap[key] || key);
+  return [...new Set(normalized.filter((key) => pagePermissionKeys.includes(key)))];
 }
 
 function hasPageAccess(user, ...pages) {
@@ -893,11 +900,11 @@ app.patch("/api/card-config", requireAdmin, (req, res) => {
   });
 });
 
-app.get("/api/submissions", requireReviewUser, requirePageAccess("reviewDesk", "summary"), (req, res) => {
+app.get("/api/submissions", requireReviewUser, requirePageAccess("reviewPage", "resultSummary"), (req, res) => {
   res.json(readSubmissions().map(publicSubmissionForReview));
 });
 
-app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("reviewDesk"), (req, res) => {
+app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("reviewPage"), (req, res) => {
   const reviewStatus = String(req.body.reviewStatus || "").trim();
   const reviewComment = String(req.body.reviewComment || "").trim();
 
@@ -1018,7 +1025,7 @@ app.delete("/api/submissions/:id", requireAdmin, (req, res) => {
   res.json({ message: "申请记录已删除。", id: req.params.id });
 });
 
-app.get("/api/files/:filename", requireReviewUser, requirePageAccess("reviewDesk", "summary"), (req, res) => {
+app.get("/api/files/:filename", requireReviewUser, requirePageAccess("reviewPage", "resultSummary"), (req, res) => {
   const safeName = path.basename(req.params.filename);
   const filePath = path.join(uploadDir, safeName);
   if (!fs.existsSync(filePath)) {
