@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡评审台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260701-08" />
+    <link rel="stylesheet" href="./styles.css?v=20260702-01" />
   </head>
   <body>
     <header class="topbar nav-only">
@@ -110,6 +110,19 @@
           </div>
           <div id="cardConfigEditor" class="card-config-grid"></div>
           <p id="cardConfigMessage" class="message" role="status"></p>
+
+          <div class="import-config-card">
+            <div>
+              <h3>花名册导入</h3>
+              <p>用于申请页“所属部门”下拉和按姓名自动带出部门。Excel 表头需包含“姓名”和“一级部门”。</p>
+            </div>
+            <form id="rosterImportForm" class="import-inline-form">
+              <input id="rosterFileInput" type="file" name="rosterFile" accept=".xlsx,.xls,.csv" required />
+              <button type="submit">导入花名册</button>
+            </form>
+            <div id="rosterSummary" class="import-summary">尚未加载花名册。</div>
+            <p id="rosterImportMessage" class="message" role="status"></p>
+          </div>
         </section>
 
         <section class="panel permission-admin" id="permissionPanel" hidden>
@@ -134,6 +147,6 @@
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./card-data.js?v=20260611-23" defer></script>
     <script src="./nav.js?v=20260701-03" defer></script>
-    <script src="./admin.js?v=20260701-08" defer></script>
+    <script src="./admin.js?v=20260702-01" defer></script>
   </body>
 </html>

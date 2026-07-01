@@ -1505,6 +1505,50 @@ small {
   resize: vertical;
 }
 
+.import-config-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbff;
+  padding: 16px;
+}
+
+.import-config-card h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+}
+
+.import-config-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.import-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.import-summary span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 7px 10px;
+}
+
+.import-summary strong {
+  color: var(--blue-dark);
+}
+
 .permission-admin {
   display: grid;
   gap: 14px;
@@ -1624,6 +1668,7 @@ small {
   .setup-form,
   .card-config-fields,
   .feedback-upload-form,
+  .import-inline-form,
   .query-secret-form,
   .query-secret-lookup-form,
   .review-form,

@@ -5,6 +5,7 @@ const express = require("express");
 const multer = require("multer");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const xlsx = require("xlsx");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +21,7 @@ const uploadDir = path.join(storageRoot, "uploads");
 const submissionsFile = path.join(dataDir, "submissions.json");
 const usersFile = path.join(dataDir, "users.json");
 const cardConfigFile = path.join(dataDir, "card-config.json");
+const rosterFile = path.join(dataDir, "roster.json");
 
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
@@ -118,7 +120,7 @@ function refreshCardRuntime(details) {
 
 function writeCardDetails(details) {
   const normalized = normalizeCardDetails(details);
-  fs.writeFileSync(cardConfigFile, JSON.stringify(normalized, null, 2), "utf8");
+  writeJsonAtomic(cardConfigFile, normalized);
   refreshCardRuntime(normalized);
   return normalized;
 }
@@ -348,9 +350,7 @@ function readUsers() {
 }
 
 function writeUsers(users) {
-  const tmp = usersFile + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(users, null, 2), "utf8");
-  fs.renameSync(tmp, usersFile);
+  writeJsonAtomic(usersFile, users);
 }
 
 function publicUser(user) {
@@ -369,9 +369,80 @@ function readSubmissions() {
 }
 
 function writeSubmissions(records) {
-  const tmp = submissionsFile + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(records, null, 2), "utf8");
-  fs.renameSync(tmp, submissionsFile);
+  writeJsonAtomic(submissionsFile, records);
+}
+
+function writeJsonAtomic(file, value) {
+  const tmp = file + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf8");
+  fs.renameSync(tmp, file);
+}
+
+function normalizeRosterText(value) {
+  return String(value || "").trim();
+}
+
+function normalizeRosterRows(rows = []) {
+  const employeesByName = new Map();
+
+  rows.forEach((row) => {
+    const name = normalizeRosterText(row["姓名"] || row.name || row["员工姓名"]);
+    const department = normalizeRosterText(row["一级部门"] || row["所属部门"] || row["部门"] || row.department);
+    if (!name || !department) return;
+    employeesByName.set(name, { name, department });
+  });
+
+  const employees = Array.from(employeesByName.values()).sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+  const departments = [...new Set(employees.map((item) => item.department))]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "zh-CN"));
+
+  return {
+    updatedAt: new Date().toISOString(),
+    count: employees.length,
+    departments,
+    employees
+  };
+}
+
+function parseRosterWorkbook(filePath) {
+  const workbook = xlsx.readFile(filePath, { cellDates: true });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) {
+    throw new Error("花名册文件没有可读取的工作表。");
+  }
+
+  const rows = xlsx.utils.sheet_to_json(workbook.Sheets[firstSheetName], {
+    defval: "",
+    raw: false
+  });
+  return normalizeRosterRows(rows);
+}
+
+function readRoster() {
+  if (!fs.existsSync(rosterFile)) {
+    return { updatedAt: "", count: 0, departments: [], employees: [] };
+  }
+
+  const content = fs.readFileSync(rosterFile, "utf8").replace(/^\uFEFF/, "");
+  const roster = JSON.parse(content || "{}");
+  return {
+    updatedAt: roster.updatedAt || "",
+    count: Number(roster.count || 0),
+    departments: Array.isArray(roster.departments) ? roster.departments : [],
+    employees: Array.isArray(roster.employees) ? roster.employees : []
+  };
+}
+
+function writeRoster(roster) {
+  const normalized = {
+    updatedAt: roster.updatedAt || new Date().toISOString(),
+    count: Number(roster.count || 0),
+    departments: Array.isArray(roster.departments) ? roster.departments : [],
+    employees: Array.isArray(roster.employees) ? roster.employees : []
+  };
+  writeJsonAtomic(rosterFile, normalized);
+  return normalized;
 }
 
 function normalizeFileList(files = []) {
@@ -890,6 +961,33 @@ app.get("/api/applicants/secret-status", (req, res) => {
 
   const hasSecret = readSubmissions().some((record) => record.applicantName === applicantName && record.querySecretHash);
   res.json({ hasSecret });
+});
+
+app.get("/api/roster", (req, res) => {
+  res.json(readRoster());
+});
+
+app.post("/api/roster/import", requireAdmin, upload.single("rosterFile"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "请选择要导入的花名册 Excel 文件。" });
+  }
+
+  try {
+    const roster = parseRosterWorkbook(req.file.path);
+    if (!roster.count) {
+      return res.status(400).json({ message: "未读取到有效员工数据，请确认表头包含“姓名”和“一级部门”。" });
+    }
+
+    const savedRoster = writeRoster(roster);
+    res.json({
+      message: `花名册已导入，共 ${savedRoster.count} 人、${savedRoster.departments.length} 个部门。`,
+      roster: savedRoster
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message || "花名册导入失败。" });
+  } finally {
+    fs.rm(req.file.path, { force: true }, () => {});
+  }
 });
 
 app.get("/api/card-config", (req, res) => {

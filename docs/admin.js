@@ -46,6 +46,10 @@ const cardConfigPanel = document.querySelector("#cardConfigPanel");
 const cardConfigEditor = document.querySelector("#cardConfigEditor");
 const saveCardConfigBtn = document.querySelector("#saveCardConfigBtn");
 const cardConfigMessage = document.querySelector("#cardConfigMessage");
+const rosterImportForm = document.querySelector("#rosterImportForm");
+const rosterFileInput = document.querySelector("#rosterFileInput");
+const rosterSummary = document.querySelector("#rosterSummary");
+const rosterImportMessage = document.querySelector("#rosterImportMessage");
 const permissionPanel = document.querySelector("#permissionPanel");
 const permissionList = document.querySelector("#permissionList");
 const loadUsersBtn = document.querySelector("#loadUsersBtn");
@@ -141,6 +145,7 @@ function applyAdminModule() {
   }
 
   if (typeof renderPageNav === "function") renderPageNav();
+  if (showConfig) loadRosterSummary().catch(() => {});
 }
 
 function setAuthMode(mode) {
@@ -214,6 +219,32 @@ function textToRules(value) {
 function setCardConfigMessage(text, type) {
   cardConfigMessage.textContent = text;
   cardConfigMessage.className = `message ${type || ""}`;
+}
+
+function setRosterImportMessage(text, type) {
+  if (!rosterImportMessage) return;
+  rosterImportMessage.textContent = text;
+  rosterImportMessage.className = `message ${type || ""}`;
+}
+
+function renderRosterSummary(roster = {}) {
+  if (!rosterSummary) return;
+  const count = Number(roster.count || 0);
+  const departments = Array.isArray(roster.departments) ? roster.departments : [];
+  const updatedAt = roster.updatedAt ? formatDate(roster.updatedAt) : "未导入";
+  rosterSummary.innerHTML = `
+    <span>员工：<strong>${escapeHtml(count)}</strong> 人</span>
+    <span>部门：<strong>${escapeHtml(departments.length)}</strong> 个</span>
+    <span>更新时间：<strong>${escapeHtml(updatedAt)}</strong></span>
+  `;
+}
+
+async function loadRosterSummary() {
+  if (!hasBackend() || !isAdminUser()) return;
+  const response = await fetch(apiUrl("/api/roster"));
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || "花名册加载失败");
+  renderRosterSummary(result);
 }
 
 function renderCardConfigEditor() {
@@ -1136,6 +1167,42 @@ saveCardConfigBtn.addEventListener("click", async () => {
     saveCardConfigBtn.disabled = false;
   }
 });
+
+if (rosterImportForm) {
+  rosterImportForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!currentUser || currentUser.role !== "admin") return;
+
+    const file = rosterFileInput.files[0];
+    if (!file) {
+      setRosterImportMessage("请选择花名册 Excel 文件。", "error");
+      return;
+    }
+
+    const submitButton = rosterImportForm.querySelector('button[type="submit"]');
+    const data = new FormData();
+    data.append("rosterFile", file, file.name);
+    submitButton.disabled = true;
+    setRosterImportMessage("", "");
+
+    try {
+      const response = await fetch(apiUrl("/api/roster/import"), {
+        method: "POST",
+        headers: authHeaders(),
+        body: data
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "花名册导入失败");
+      rosterFileInput.value = "";
+      renderRosterSummary(result.roster);
+      setRosterImportMessage(result.message || "花名册已导入。", "success");
+    } catch (error) {
+      setRosterImportMessage(error.message, "error");
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+}
 
 async function restoreSession() {
   if (!authToken || !hasBackend()) return;

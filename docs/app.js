@@ -8,6 +8,10 @@ const resultQueryForm = document.querySelector("#resultQueryForm");
 const queryResult = document.querySelector("#queryResult");
 const dateInput = form.querySelector('input[name="applicationDate"]');
 const applicantNameInput = form.querySelector('input[name="applicantName"]');
+const departmentSelect = form.querySelector('select[name="department"]');
+const defaultDepartmentOptions = Array.from(departmentSelect.options)
+  .filter((option) => option.value)
+  .map((option) => option.value || option.textContent.trim());
 const querySecretField = document.querySelector("#querySecretField");
 const querySecretInput = form.querySelector('input[name="querySecret"]');
 const querySecretHint = document.querySelector("#querySecretHint");
@@ -22,6 +26,7 @@ let selectedFiles = [];
 let currentCardFilter = "open";
 let applicantHasHistorySecret = false;
 let secretStatusTimer = null;
+let roster = { departments: [], employees: [] };
 
 dateInput.valueAsDate = new Date();
 
@@ -296,6 +301,52 @@ async function loadCardDetails() {
   }
 }
 
+function renderDepartmentOptions(departments = []) {
+  const currentValue = departmentSelect.value;
+  const options = departments.length ? departments : defaultDepartmentOptions;
+  departmentSelect.innerHTML = [
+    '<option value="">请选择所属部门</option>',
+    ...options.map((department) => `<option value="${escapeHtml(department)}">${escapeHtml(department)}</option>`)
+  ].join("");
+
+  if (currentValue && options.includes(currentValue)) {
+    departmentSelect.value = currentValue;
+  }
+}
+
+function applyRosterDepartmentForApplicant() {
+  const applicantName = applicantNameInput.value.trim();
+  if (!applicantName || !Array.isArray(roster.employees)) return;
+
+  const matched = roster.employees.find((item) => item.name === applicantName);
+  if (!matched || !matched.department) return;
+
+  const canAutoFill = !departmentSelect.value || departmentSelect.dataset.autoFilled === "true";
+  if (canAutoFill) {
+    departmentSelect.value = matched.department;
+    departmentSelect.dataset.autoFilled = "true";
+  }
+}
+
+async function loadRoster() {
+  renderDepartmentOptions();
+  if (!hasBackend()) return;
+
+  try {
+    const response = await fetch(apiUrl("/api/roster"));
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "花名册加载失败");
+    roster = {
+      departments: Array.isArray(result.departments) ? result.departments : [],
+      employees: Array.isArray(result.employees) ? result.employees : []
+    };
+    renderDepartmentOptions(roster.departments);
+    applyRosterDepartmentForApplicant();
+  } catch {
+    renderDepartmentOptions();
+  }
+}
+
 function updateQuerySecretVisibility(hasSecret) {
   applicantHasHistorySecret = hasSecret;
   querySecretField.hidden = hasSecret;
@@ -358,12 +409,17 @@ attachmentList.addEventListener("click", (event) => {
 });
 
 applicantNameInput.addEventListener("input", () => {
+  applyRosterDepartmentForApplicant();
   clearTimeout(secretStatusTimer);
   secretStatusTimer = setTimeout(() => {
     refreshApplicantSecretStatus().catch(() => {
       updateQuerySecretVisibility(false);
     });
   }, 350);
+});
+
+departmentSelect.addEventListener("change", () => {
+  departmentSelect.dataset.autoFilled = "";
 });
 
 form.addEventListener("submit", async (event) => {
@@ -419,6 +475,7 @@ form.addEventListener("submit", async (event) => {
     form.reset();
     dateInput.valueAsDate = new Date();
     applyLoggedInApplicantName({ force: true });
+    applyRosterDepartmentForApplicant();
     updateQuerySecretVisibility(false);
     refreshApplicantSecretStatus().catch(() => {});
     selectedFiles = [];
@@ -468,6 +525,7 @@ resultQueryForm.addEventListener("submit", async (event) => {
 async function initializePage() {
   renderSelectedFiles();
   applyLoggedInApplicantName();
+  await loadRoster();
   refreshApplicantSecretStatus().catch(() => {});
   await loadCardDetails();
   renderCardChoices();

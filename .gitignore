@@ -2,5 +2,9 @@ node_modules/
 .env
 *.log
 data/submissions.json
+data/users.json
+data/*.backup.json
+data/roster.json
+data/backups/
 uploads/*
 !uploads/.gitkeep
