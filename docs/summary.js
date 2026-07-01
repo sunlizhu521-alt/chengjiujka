@@ -1,5 +1,6 @@
 let allRecords = [];
 let authToken = localStorage.getItem("chengjiukaReviewToken") || "";
+let currentUser = null;
 
 const adminNameInput = document.querySelector("#adminName");
 const adminSecretInput = document.querySelector("#adminSecret");
@@ -43,6 +44,10 @@ function authHeaders(extra = {}) {
 
 function canViewSummary(user) {
   return user && (user.role === "admin" || (Array.isArray(user.pageAccess) && user.pageAccess.includes("summary")));
+}
+
+function canDeleteRecords(user = currentUser) {
+  return user && user.name === "孙立柱" && user.role === "admin";
 }
 
 function normalizeReviewStatus(status) {
@@ -120,7 +125,7 @@ function renderTable() {
   renderSummary(records);
 
   if (records.length === 0) {
-    summaryBody.innerHTML = '<tr><td colspan="11">暂无符合条件的记录。</td></tr>';
+    summaryBody.innerHTML = '<tr><td colspan="12">暂无符合条件的记录。</td></tr>';
     return;
   }
 
@@ -140,6 +145,13 @@ function renderTable() {
           <td>${escapeHtml(item.reviewer || "")}</td>
           <td class="summary-comment">${escapeHtml(item.reviewComment || "")}</td>
           <td>${escapeHtml(item.reviewDate || "")}</td>
+          <td>
+            ${
+              canDeleteRecords()
+                ? `<button type="button" class="delete-summary-record-btn danger-button" data-id="${escapeHtml(item.id)}">删除</button>`
+                : ""
+            }
+          </td>
         </tr>
       `;
     })
@@ -159,7 +171,10 @@ async function loadRecords() {
     const meResult = await meResponse.json();
     if (!meResponse.ok || !canViewSummary(meResult.user)) {
       authToken = "";
+      currentUser = null;
       localStorage.removeItem("chengjiukaReviewToken");
+    } else {
+      currentUser = meResult.user;
     }
   }
 
@@ -187,6 +202,7 @@ async function loadRecords() {
       return;
     }
     authToken = loginResult.token;
+    currentUser = loginResult.user;
     localStorage.setItem("chengjiukaReviewToken", authToken);
   }
 
@@ -216,3 +232,33 @@ async function loadRecords() {
 });
 
 loadBtn.addEventListener("click", loadRecords);
+
+summaryBody.addEventListener("click", async (event) => {
+  const button = event.target.closest(".delete-summary-record-btn");
+  if (!button) return;
+  if (!canDeleteRecords()) {
+    setSummaryMessage("只有孙立柱管理员可以删除申请记录。", "error");
+    return;
+  }
+
+  const id = button.dataset.id;
+  const record = allRecords.find((item) => item.id === id);
+  const label = record ? `${record.applicantName} - ${record.cardType}` : id;
+  if (!window.confirm(`确认删除申请记录：${label}？删除后附件也会一并删除。`)) return;
+
+  button.disabled = true;
+  try {
+    const response = await fetch(apiUrl(`/api/submissions/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+      headers: authHeaders()
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "删除失败");
+    allRecords = allRecords.filter((item) => item.id !== id);
+    renderTable();
+    setSummaryMessage(result.message || "申请记录已删除。", "success");
+  } catch (error) {
+    setSummaryMessage(error.message, "error");
+    button.disabled = false;
+  }
+});

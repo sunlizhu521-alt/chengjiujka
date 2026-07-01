@@ -1490,6 +1490,13 @@ small {
   padding: 0 12px;
 }
 
+.delete-summary-record-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .admin-message {
   margin-top: 18px;
 }

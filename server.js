@@ -1005,6 +1005,19 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   res.json(publicSubmissionForReview(record));
 });
 
+app.delete("/api/submissions/:id", requireAdmin, (req, res) => {
+  const records = readSubmissions();
+  const recordIndex = records.findIndex((item) => item.id === req.params.id);
+  if (recordIndex === -1) {
+    return res.status(404).json({ message: "未找到提交记录。" });
+  }
+
+  const [removedRecord] = records.splice(recordIndex, 1);
+  removeUploadedFiles([...(removedRecord.attachments || []), ...(removedRecord.feedbackFiles || [])]);
+  writeSubmissions(records);
+  res.json({ message: "申请记录已删除。", id: req.params.id });
+});
+
 app.get("/api/files/:filename", requireReviewUser, requirePageAccess("reviewDesk", "summary"), (req, res) => {
   const safeName = path.basename(req.params.filename);
   const filePath = path.join(uploadDir, safeName);
