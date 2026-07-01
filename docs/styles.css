@@ -131,6 +131,31 @@ button {
   align-items: center;
 }
 
+.auth-mode-tabs {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 3px;
+}
+
+.auth-mode-btn {
+  min-height: 32px;
+  border-radius: 999px;
+  background: transparent;
+  color: #30305b;
+  padding: 0 14px;
+  box-shadow: none;
+}
+
+.auth-mode-btn.active,
+.auth-mode-btn:hover {
+  background: var(--blue);
+  color: #fff;
+}
+
 .secondary-link {
   border-color: rgba(218, 218, 244, 0.9);
   background: #ffffff;
@@ -140,6 +165,10 @@ button {
 
 .secondary-button {
   background: #8b8bdc;
+}
+
+.danger-button {
+  background: var(--red);
 }
 
 button {
@@ -1388,6 +1417,79 @@ small {
   resize: vertical;
 }
 
+.permission-admin {
+  display: grid;
+  gap: 14px;
+}
+
+.permission-list {
+  display: grid;
+  gap: 12px;
+}
+
+.permission-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.permission-user-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.permission-user-head strong {
+  display: block;
+  color: #1f2147;
+  font-size: 17px;
+}
+
+.permission-user-head span,
+.permission-user-head small,
+.empty-text {
+  color: var(--muted);
+}
+
+.permission-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.permission-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfbff;
+  padding: 0 10px;
+  color: #30305b;
+  font-weight: 700;
+}
+
+.permission-checkbox input {
+  width: 16px;
+  min-height: 16px;
+}
+
+.permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+}
+
 .admin-message {
   margin-top: 18px;
 }
@@ -1437,6 +1539,7 @@ small {
   .grid,
   .card-choice-group,
   .meta-grid,
+  .permission-checkbox-grid,
   .summary-row,
   .record-grid,
   .public-passed-meta,

@@ -6,12 +6,25 @@ const attachmentImageIndexes = {};
 
 let cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
 const reviewMembers = ["孙立柱", "王斌", "惠李伟", "蒋炳兰", "任蒨"];
+const pageLabels = {
+  reviewDesk: "评审工作台",
+  summary: "结果汇总",
+  cardConfig: "成就卡配置",
+  permissionManagement: "权限管理"
+};
+let permissionPages = Object.entries(pageLabels).map(([key, label]) => ({ key, label }));
+let permissionUsers = [];
 
 const loginPanel = document.querySelector("#loginPanel");
 const reviewApp = document.querySelector("#reviewApp");
 const loginForm = document.querySelector("#loginForm");
 const loginName = document.querySelector("#loginName");
 const loginSecret = document.querySelector("#loginSecret");
+const registerForm = document.querySelector("#registerForm");
+const registerName = document.querySelector("#registerName");
+const registerSecret = document.querySelector("#registerSecret");
+const showLoginModeBtn = document.querySelector("#showLoginModeBtn");
+const showRegisterModeBtn = document.querySelector("#showRegisterModeBtn");
 const setupForm = document.querySelector("#setupForm");
 const setupSecret = document.querySelector("#setupSecret");
 const loginMessage = document.querySelector("#loginMessage");
@@ -31,6 +44,10 @@ const cardConfigPanel = document.querySelector("#cardConfigPanel");
 const cardConfigEditor = document.querySelector("#cardConfigEditor");
 const saveCardConfigBtn = document.querySelector("#saveCardConfigBtn");
 const cardConfigMessage = document.querySelector("#cardConfigMessage");
+const permissionPanel = document.querySelector("#permissionPanel");
+const permissionList = document.querySelector("#permissionList");
+const loadUsersBtn = document.querySelector("#loadUsersBtn");
+const permissionMessage = document.querySelector("#permissionMessage");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
@@ -77,6 +94,27 @@ function apiUrl(path) {
   return configuredApiBase ? `${configuredApiBase}${path}` : path;
 }
 
+function isAdminUser(user = currentUser) {
+  return user && (user.role === "admin" || user.name === "孙立柱");
+}
+
+function hasPageAccess(page, user = currentUser) {
+  if (isAdminUser(user)) return true;
+  return Array.isArray(user?.pageAccess) && user.pageAccess.includes(page);
+}
+
+function setAuthMode(mode) {
+  const isRegister = mode === "register";
+  loginForm.hidden = isRegister;
+  registerForm.hidden = !isRegister;
+  setupForm.hidden = true;
+  showLoginModeBtn.classList.toggle("active", !isRegister);
+  showRegisterModeBtn.classList.toggle("active", isRegister);
+  setLoginMessage("", "");
+  if (isRegister) registerName.focus();
+  else loginName.focus();
+}
+
 async function loadCardDetails() {
   if (!hasBackend()) return;
 
@@ -96,6 +134,11 @@ function authHeaders(extra = {}) {
     ...extra,
     "x-review-token": authToken
   };
+}
+
+function setPermissionMessage(text, type) {
+  permissionMessage.textContent = text;
+  permissionMessage.className = `message ${type || ""}`;
 }
 
 function normalizeReviewStatus(status) {
@@ -198,6 +241,79 @@ function collectCardConfigEditor() {
     };
   });
   return nextCards;
+}
+
+function renderPermissionPanel() {
+  if (!isAdminUser()) {
+    permissionPanel.hidden = true;
+    permissionList.innerHTML = "";
+    return;
+  }
+
+  permissionPanel.hidden = false;
+  if (permissionUsers.length === 0) {
+    permissionList.innerHTML = '<p class="empty-text">暂无用户数据，请点击刷新用户。</p>';
+    return;
+  }
+
+  permissionList.innerHTML = permissionUsers
+    .map((user) => {
+      const isBuiltInAdmin = isAdminUser(user);
+      const access = new Set(user.pageAccess || []);
+      const options = permissionPages
+        .map((page) => `
+          <label class="permission-checkbox">
+            <input
+              type="checkbox"
+              value="${escapeHtml(page.key)}"
+              ${access.has(page.key) ? "checked" : ""}
+              ${isBuiltInAdmin ? "disabled" : ""}
+            />
+            <span>${escapeHtml(page.label)}</span>
+          </label>
+        `)
+        .join("");
+
+      return `
+        <article class="permission-card" data-user-name="${escapeHtml(user.name)}">
+          <div class="permission-user-head">
+            <div>
+              <strong>${escapeHtml(user.name)}</strong>
+              <span>${escapeHtml(isBuiltInAdmin ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户")}</span>
+            </div>
+            <small>${access.size ? `已授权 ${access.size} 项` : "待授权"}</small>
+          </div>
+          <div class="permission-checkbox-grid">${options}</div>
+          <div class="permission-actions">
+            <button type="button" class="save-user-access-btn" ${isBuiltInAdmin ? "disabled" : ""}>保存授权</button>
+            <button type="button" class="reset-user-secret-btn secondary-button" ${isBuiltInAdmin ? "disabled" : ""}>重置秘钥</button>
+            <button type="button" class="delete-user-btn danger-button" ${isBuiltInAdmin ? "disabled" : ""}>删除账号</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function loadPermissionUsers() {
+  if (!isAdminUser()) return;
+  loadUsersBtn.disabled = true;
+  setPermissionMessage("", "");
+  try {
+    const response = await fetch(apiUrl("/api/auth/users"), {
+      headers: authHeaders()
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "加载用户失败");
+    permissionPages = result.pages || permissionPages;
+    permissionUsers = result.users || [];
+    renderPermissionPanel();
+    setPermissionMessage("用户权限已加载。", "success");
+  } catch (error) {
+    setPermissionMessage(error.message, "error");
+  } finally {
+    loadUsersBtn.disabled = false;
+  }
 }
 
 function fileUrl(file, options = {}) {
@@ -576,14 +692,16 @@ function renderRecords() {
 
 function showReviewApp(user) {
   currentUser = user;
-  currentUserLabel.textContent = `${user.name}（${user.role === "admin" ? "管理员" : "评审人"}）`;
-  summaryEntry.hidden = user.role !== "admin";
-  summaryEntry.style.display = user.role === "admin" ? "" : "none";
+  const roleLabel = user.role === "admin" ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户";
+  currentUserLabel.textContent = `${user.name}（${roleLabel}）`;
+  summaryEntry.hidden = !hasPageAccess("summary", user);
+  summaryEntry.style.display = hasPageAccess("summary", user) ? "" : "none";
   loginPanel.hidden = true;
   loginPanel.style.display = "none";
   reviewApp.hidden = false;
   reviewApp.style.display = "";
   renderCardConfigEditor();
+  renderPermissionPanel();
 }
 
 function showLogin() {
@@ -598,7 +716,9 @@ function showLogin() {
   reviewApp.hidden = true;
   reviewApp.style.display = "none";
   setupForm.hidden = true;
+  setAuthMode("login");
   allRecords = [];
+  permissionUsers = [];
 }
 
 async function loadRecords() {
@@ -608,6 +728,10 @@ async function loadRecords() {
   }
   if (!authToken) {
     setAdminMessage("请先登录评审账号。", "error");
+    return;
+  }
+  if (!hasPageAccess("reviewDesk")) {
+    setAdminMessage("当前账号暂无评审工作台权限。", "error");
     return;
   }
 
@@ -669,7 +793,8 @@ loginForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    await loadRecords();
+    if (hasPageAccess("reviewDesk", result.user)) await loadRecords();
+    if (isAdminUser(result.user)) await loadPermissionUsers();
   } catch (error) {
     setLoginMessage(error.message, "error");
   }
@@ -695,11 +820,42 @@ setupForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    await loadRecords();
+    if (hasPageAccess("reviewDesk", result.user)) await loadRecords();
+    if (isAdminUser(result.user)) await loadPermissionUsers();
   } catch (error) {
     setLoginMessage(error.message, "error");
   }
 });
+
+registerForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!hasBackend()) {
+    setLoginMessage("当前固定入口还没有配置后端地址。", "error");
+    return;
+  }
+
+  const payload = Object.fromEntries(new FormData(registerForm).entries());
+  setLoginMessage("", "");
+
+  try {
+    const response = await fetch(apiUrl("/api/auth/register"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "注册失败");
+    registerForm.reset();
+    setAuthMode("login");
+    loginName.value = payload.name || "";
+    setLoginMessage(result.message || "注册成功，请等待管理员授权。", "success");
+  } catch (error) {
+    setLoginMessage(error.message, "error");
+  }
+});
+
+showLoginModeBtn.addEventListener("click", () => setAuthMode("login"));
+showRegisterModeBtn.addEventListener("click", () => setAuthMode("register"));
 
 recordsEl.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -846,6 +1002,59 @@ nextRecordBtn.addEventListener("click", () => {
 
 logoutBtn.addEventListener("click", showLogin);
 loadBtn.addEventListener("click", loadRecords);
+loadUsersBtn.addEventListener("click", loadPermissionUsers);
+
+permissionList.addEventListener("click", async (event) => {
+  const card = event.target.closest(".permission-card");
+  if (!card) return;
+  const userName = card.dataset.userName;
+  if (!userName) return;
+
+  try {
+    if (event.target.closest(".save-user-access-btn")) {
+      const pageAccess = Array.from(card.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
+      const response = await fetch(apiUrl(`/api/auth/users/${encodeURIComponent(userName)}/access`), {
+        method: "PATCH",
+        headers: authHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ pageAccess })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "保存授权失败");
+      permissionUsers = permissionUsers.map((user) => (user.name === result.user.name ? result.user : user));
+      renderPermissionPanel();
+      setPermissionMessage(result.message || "用户权限已保存。", "success");
+      return;
+    }
+
+    if (event.target.closest(".reset-user-secret-btn")) {
+      if (!window.confirm(`确认重置 ${userName} 的登录秘钥？重置后临时秘钥为 123456。`)) return;
+      const response = await fetch(apiUrl(`/api/auth/users/${encodeURIComponent(userName)}/reset-secret`), {
+        method: "POST",
+        headers: authHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ secret: "123456" })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "重置秘钥失败");
+      setPermissionMessage(result.message || "秘钥已重置。", "success");
+      return;
+    }
+
+    if (event.target.closest(".delete-user-btn")) {
+      if (!window.confirm(`确认删除账号 ${userName}？`)) return;
+      const response = await fetch(apiUrl(`/api/auth/users/${encodeURIComponent(userName)}`), {
+        method: "DELETE",
+        headers: authHeaders()
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "删除账号失败");
+      permissionUsers = result.users || permissionUsers.filter((user) => user.name !== userName);
+      renderPermissionPanel();
+      setPermissionMessage(result.message || "用户已删除。", "success");
+    }
+  } catch (error) {
+    setPermissionMessage(error.message, "error");
+  }
+});
 
 saveCardConfigBtn.addEventListener("click", async () => {
   if (!currentUser || currentUser.role !== "admin") return;
@@ -884,7 +1093,8 @@ async function restoreSession() {
     if (!response.ok) throw new Error(result.message || "登录已过期");
     await loadCardDetails();
     showReviewApp(result.user);
-    await loadRecords();
+    if (hasPageAccess("reviewDesk", result.user)) await loadRecords();
+    if (isAdminUser(result.user)) await loadPermissionUsers();
   } catch {
     showLogin();
   }

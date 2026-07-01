@@ -25,6 +25,16 @@ const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const reviewMemberNames = [adminName, ...reviewerNames];
 const reviewStatuses = new Set(["通过", "不通过", "需补资料"]);
+const userRoleName = "user";
+const pagePermissions = [
+  { key: "reviewDesk", label: "评审工作台" },
+  { key: "summary", label: "结果汇总" },
+  { key: "cardConfig", label: "成就卡配置" },
+  { key: "permissionManagement", label: "权限管理" }
+];
+const pagePermissionKeys = pagePermissions.map((item) => item.key);
+const defaultReviewerAccess = ["reviewDesk"];
+
 function loadDefaultCardDetails() {
   const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
   const m = raw.match(/window\.CHENGJIUKA_CARD_DETAILS\s*=\s*(\{[\s\S]*\});?\s*$/);
@@ -193,6 +203,30 @@ function createSession(user) {
   return `${payload}.${hmac(payload)}`;
 }
 
+function createUserId() {
+  return `u-${crypto.randomBytes(8).toString("hex")}`;
+}
+
+function isAdminUser(user) {
+  return user && (user.name === adminName || user.role === "admin");
+}
+
+function normalizePageAccess(user) {
+  if (isAdminUser(user)) return pagePermissionKeys;
+  const source = Array.isArray(user.pageAccess)
+    ? user.pageAccess
+    : user.role === "reviewer"
+      ? defaultReviewerAccess
+      : [];
+  return [...new Set(source.filter((key) => pagePermissionKeys.includes(key)))];
+}
+
+function hasPageAccess(user, ...pages) {
+  if (isAdminUser(user)) return true;
+  const access = normalizePageAccess(user);
+  return pages.some((page) => access.includes(page));
+}
+
 function verifySession(token) {
   const [payload, signature] = String(token || "").split(".");
   if (!payload || !signature || hmac(payload) !== signature) return null;
@@ -203,7 +237,12 @@ function verifySession(token) {
     const users = readUsers();
     const user = users[data.name];
     if (!user || user.role !== data.role) return null;
-    return { name: data.name, role: data.role, canUploadFeedback: data.name === adminName };
+    return {
+      name: user.name,
+      role: user.role,
+      pageAccess: normalizePageAccess(user),
+      canUploadFeedback: user.name === adminName
+    };
   } catch {
     return null;
   }
@@ -212,17 +251,21 @@ function verifySession(token) {
 function defaultUsers() {
   return {
     [adminName]: {
+      id: "u-admin",
       name: adminName,
       role: "admin",
+      pageAccess: pagePermissionKeys,
       secretHash: hashSecret(process.env.ADMIN_PASSWORD || "521sunlizhu"),
       mustChangeSecret: false
     },
     ...Object.fromEntries(
-      reviewerNames.map((name) => [
+      reviewerNames.map((name, index) => [
         name,
         {
           name,
+          id: `u-reviewer-${index + 1}`,
           role: "reviewer",
+          pageAccess: defaultReviewerAccess,
           secretHash: "",
           mustChangeSecret: true
         }
@@ -248,9 +291,39 @@ function readUsers() {
     }
     if (!users[name].name) users[name].name = name;
     if (!users[name].role) users[name].role = user.role;
+    if (!users[name].id) {
+      users[name].id = user.id || createUserId();
+      changed = true;
+    }
+    const normalizedAccess = normalizePageAccess(users[name]);
+    if (JSON.stringify(users[name].pageAccess || []) !== JSON.stringify(normalizedAccess)) {
+      users[name].pageAccess = normalizedAccess;
+      changed = true;
+    }
     if (name === adminName && (users[name].secretHash !== user.secretHash || users[name].mustChangeSecret)) {
       users[name].secretHash = user.secretHash;
       users[name].mustChangeSecret = false;
+      users[name].pageAccess = pagePermissionKeys;
+      changed = true;
+    }
+  });
+
+  Object.entries(users).forEach(([name, user]) => {
+    if (!user.name) {
+      user.name = name;
+      changed = true;
+    }
+    if (!user.id) {
+      user.id = createUserId();
+      changed = true;
+    }
+    if (!user.role) {
+      user.role = userRoleName;
+      changed = true;
+    }
+    const normalizedAccess = normalizePageAccess(user);
+    if (JSON.stringify(user.pageAccess || []) !== JSON.stringify(normalizedAccess)) {
+      user.pageAccess = normalizedAccess;
       changed = true;
     }
   });
@@ -268,8 +341,10 @@ function writeUsers(users) {
 
 function publicUser(user) {
   return {
+    id: user.id,
     name: user.name,
     role: user.role,
+    pageAccess: normalizePageAccess(user),
     canUploadFeedback: user.name === adminName
   };
 }
@@ -373,6 +448,20 @@ function requireAdmin(req, res, next) {
   }
   req.authUser = user;
   next();
+}
+
+function requirePageAccess(...pages) {
+  return (req, res, next) => {
+    const user = req.authUser || authenticateRequest(req);
+    if (!user) {
+      return res.status(401).json({ message: "请先登录账号。" });
+    }
+    if (!hasPageAccess(user, ...pages)) {
+      return res.status(403).json({ message: "账号暂无该页面权限，请联系管理员孙立柱授权。" });
+    }
+    req.authUser = user;
+    next();
+  };
 }
 
 function removeUploadedFiles(files = []) {
@@ -506,6 +595,10 @@ app.post("/api/auth/login", (req, res) => {
     return res.status(401).json({ message: "秘钥不正确。" });
   }
 
+  if (!isAdminUser(user) && normalizePageAccess(user).length === 0) {
+    return res.status(403).json({ message: "账号已注册，请等待管理员孙立柱授权页面后再登录。" });
+  }
+
   const token = createSession(user);
   res.json({ token, user: publicUser(user) });
 });
@@ -516,7 +609,7 @@ app.post("/api/auth/setup", (req, res) => {
   const users = readUsers();
   const user = users[name];
 
-  if (!user || user.role !== "reviewer") {
+  if (!user || user.role === "admin") {
     return res.status(403).json({ message: "该账号不支持首次设置秘钥。" });
   }
   if (user.secretHash && !user.mustChangeSecret) {
@@ -537,6 +630,117 @@ app.post("/api/auth/setup", (req, res) => {
 
 app.get("/api/auth/me", requireReviewUser, (req, res) => {
   res.json({ user: publicUser(req.authUser) });
+});
+
+app.post("/api/auth/register", (req, res) => {
+  const name = String(req.body.name || "").trim();
+  const secret = String(req.body.secret || req.body.password || "").trim();
+  if (!name || !secret) {
+    return res.status(400).json({ message: "请输入姓名和秘钥。" });
+  }
+  if (secret.length < 4) {
+    return res.status(400).json({ message: "秘钥至少需要 4 位。" });
+  }
+
+  const users = readUsers();
+  if (users[name]) {
+    return res.status(409).json({ message: "该姓名已注册，请直接登录或联系管理员。" });
+  }
+
+  const user = {
+    id: createUserId(),
+    name,
+    role: userRoleName,
+    pageAccess: [],
+    secretHash: hashSecret(secret),
+    mustChangeSecret: false,
+    createdAt: new Date().toISOString()
+  };
+  users[name] = user;
+  writeUsers(users);
+  res.json({ user: publicUser(user), message: "注册成功，请等待管理员孙立柱授权页面权限。" });
+});
+
+app.get("/api/auth/users", requireAdmin, (req, res) => {
+  const users = readUsers();
+  res.json({
+    pages: pagePermissions,
+    users: Object.values(users).map((user) => ({
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      pageAccess: normalizePageAccess(user),
+      mustChangeSecret: Boolean(user.mustChangeSecret),
+      createdAt: user.createdAt || "",
+      updatedAt: user.updatedAt || ""
+    }))
+  });
+});
+
+app.patch("/api/auth/users/:name/access", requireAdmin, (req, res) => {
+  const targetName = String(req.params.name || "").trim();
+  const users = readUsers();
+  const user = users[targetName];
+  if (!user) {
+    return res.status(404).json({ message: "用户不存在。" });
+  }
+
+  const requestedAccess = Array.isArray(req.body.pageAccess)
+    ? [...new Set(req.body.pageAccess.filter((key) => pagePermissionKeys.includes(key)))]
+    : [];
+  user.pageAccess = isAdminUser(user) ? pagePermissionKeys : requestedAccess;
+  user.updatedAt = new Date().toISOString();
+  writeUsers(users);
+  res.json({ user: publicUser(user), message: "用户权限已保存。" });
+});
+
+app.post("/api/auth/users/:name/reset-secret", requireAdmin, (req, res) => {
+  const targetName = String(req.params.name || "").trim();
+  const newSecret = String(req.body.secret || "123456").trim();
+  const users = readUsers();
+  const user = users[targetName];
+  if (!user) {
+    return res.status(404).json({ message: "用户不存在。" });
+  }
+  if (isAdminUser(user)) {
+    return res.status(400).json({ message: "不能重置孙立柱管理员秘钥。" });
+  }
+  if (newSecret.length < 4) {
+    return res.status(400).json({ message: "秘钥至少需要 4 位。" });
+  }
+
+  user.secretHash = hashSecret(newSecret);
+  user.mustChangeSecret = true;
+  user.updatedAt = new Date().toISOString();
+  writeUsers(users);
+  res.json({ message: `秘钥已重置为 ${newSecret}，用户下次登录需重新设置。` });
+});
+
+app.delete("/api/auth/users/:name", requireAdmin, (req, res) => {
+  const targetName = String(req.params.name || "").trim();
+  const users = readUsers();
+  const user = users[targetName];
+  if (!user) {
+    return res.status(404).json({ message: "用户不存在。" });
+  }
+  if (isAdminUser(user)) {
+    return res.status(400).json({ message: "不能删除孙立柱管理员账号。" });
+  }
+
+  delete users[targetName];
+  writeUsers(users);
+  res.json({
+    message: "用户已删除。",
+    users: Object.values(users).map((item) => ({
+      id: item.id,
+      name: item.name,
+      role: item.role,
+      pageAccess: normalizePageAccess(item),
+      mustChangeSecret: Boolean(item.mustChangeSecret),
+      createdAt: item.createdAt || "",
+      updatedAt: item.updatedAt || ""
+    }))
+  });
 });
 
 app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
@@ -689,13 +893,17 @@ app.patch("/api/card-config", requireAdmin, (req, res) => {
   });
 });
 
-app.get("/api/submissions", requireReviewUser, (req, res) => {
+app.get("/api/submissions", requireReviewUser, requirePageAccess("reviewDesk", "summary"), (req, res) => {
   res.json(readSubmissions().map(publicSubmissionForReview));
 });
 
-app.patch("/api/submissions/:id/review", requireReviewUser, (req, res) => {
+app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("reviewDesk"), (req, res) => {
   const reviewStatus = String(req.body.reviewStatus || "").trim();
   const reviewComment = String(req.body.reviewComment || "").trim();
+
+  if (!reviewMemberNames.includes(req.authUser.name)) {
+    return res.status(403).json({ message: "当前账号不是固定评审成员，不能提交投票。" });
+  }
 
   if (!reviewStatuses.has(reviewStatus)) {
     return res.status(400).json({ message: "评审结果必填，请选择通过、不通过或需补资料。" });
@@ -797,7 +1005,7 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   res.json(publicSubmissionForReview(record));
 });
 
-app.get("/api/files/:filename", requireReviewUser, (req, res) => {
+app.get("/api/files/:filename", requireReviewUser, requirePageAccess("reviewDesk", "summary"), (req, res) => {
   const safeName = path.basename(req.params.filename);
   const filePath = path.join(uploadDir, safeName);
   if (!fs.existsSync(filePath)) {

@@ -41,6 +41,10 @@ function authHeaders(extra = {}) {
   };
 }
 
+function canViewSummary(user) {
+  return user && (user.role === "admin" || (Array.isArray(user.pageAccess) && user.pageAccess.includes("summary")));
+}
+
 function normalizeReviewStatus(status) {
   if (status === "驳回") return "不通过";
   if (status === "需补充") return "需补资料";
@@ -153,7 +157,7 @@ async function loadRecords() {
       headers: authHeaders()
     });
     const meResult = await meResponse.json();
-    if (!meResponse.ok || !meResult.user || meResult.user.role !== "admin") {
+    if (!meResponse.ok || !canViewSummary(meResult.user)) {
       authToken = "";
       localStorage.removeItem("chengjiukaReviewToken");
     }
@@ -178,8 +182,8 @@ async function loadRecords() {
       setSummaryMessage(loginResult.message || "登录失败", "error");
       return;
     }
-    if (!loginResult.user || loginResult.user.role !== "admin") {
-      setSummaryMessage("只有管理员可以查看结果汇总。", "error");
+    if (!canViewSummary(loginResult.user)) {
+      setSummaryMessage("当前账号暂无结果汇总权限，请联系管理员孙立柱授权。", "error");
       return;
     }
     authToken = loginResult.token;
