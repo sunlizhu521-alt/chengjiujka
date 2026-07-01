@@ -66,17 +66,22 @@ function normalizeScore(score) {
 
 function normalizeCardDetails(details = {}) {
   return Object.fromEntries(
-    Object.entries(details).map(([name, detail = {}]) => [
-      name,
-      {
-        definition: String(detail.definition || "").trim(),
-        applicationRules: normalizeRuleList(detail.applicationRules),
-        cycle: String(detail.cycle || "").trim(),
-        score: normalizeScore(detail.score),
-        reviewRules: normalizeRuleList(detail.reviewRules),
-        sources: String(detail.sources || "").trim()
-      }
-    ])
+    Object.entries(details).map(([name, detail = {}]) => {
+      const definition = String(detail.definition || "").trim();
+      const hasExplicitOpenState = Object.prototype.hasOwnProperty.call(detail, "isOpen");
+      return [
+        name,
+        {
+          isOpen: hasExplicitOpenState ? Boolean(detail.isOpen) : Boolean(definition),
+          definition,
+          applicationRules: normalizeRuleList(detail.applicationRules),
+          cycle: String(detail.cycle || "").trim(),
+          score: normalizeScore(detail.score),
+          reviewRules: normalizeRuleList(detail.reviewRules),
+          sources: String(detail.sources || "").trim()
+        }
+      ];
+    })
   );
 }
 
@@ -90,7 +95,7 @@ function buildCardConfig(details) {
   return {
     scores: Object.fromEntries(Object.entries(details).filter(([, d]) => d.score).map(([k, d]) => [k, Number(d.score)])),
     cycles: Object.fromEntries(Object.entries(details).filter(([, d]) => d.cycle).map(([k, d]) => [k, d.cycle])),
-    openTypes: new Set(Object.keys(details).filter((k) => details[k].definition))
+    openTypes: new Set(Object.keys(details).filter((k) => details[k].isOpen))
   };
 }
 const fallbackCardTypes = new Set(["奋斗者", "分享达人", "业绩之王", "文化先锋", "最美工位"]);
@@ -99,14 +104,14 @@ const fallbackCardCycles = { 奋斗者: "一年", 分享达人: "一年", 业绩
 const defaultCardDetails = normalizeCardDetails(loadDefaultCardDetails());
 let activeCardDetails = loadStoredCardDetails() || defaultCardDetails;
 let cardConfig = buildCardConfig(activeCardDetails);
-let cardTypes = cardConfig.openTypes.size ? cardConfig.openTypes : fallbackCardTypes;
+let cardTypes = Object.keys(activeCardDetails).length ? cardConfig.openTypes : fallbackCardTypes;
 let cardScores = Object.keys(cardConfig.scores).length ? cardConfig.scores : fallbackCardScores;
 let cardCycles = Object.keys(cardConfig.cycles).length ? cardConfig.cycles : fallbackCardCycles;
 
 function refreshCardRuntime(details) {
   activeCardDetails = normalizeCardDetails(details);
   cardConfig = buildCardConfig(activeCardDetails);
-  cardTypes = cardConfig.openTypes.size ? cardConfig.openTypes : fallbackCardTypes;
+  cardTypes = Object.keys(activeCardDetails).length ? cardConfig.openTypes : fallbackCardTypes;
   cardScores = Object.keys(cardConfig.scores).length ? cardConfig.scores : fallbackCardScores;
   cardCycles = Object.keys(cardConfig.cycles).length ? cardConfig.cycles : fallbackCardCycles;
 }

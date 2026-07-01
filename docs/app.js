@@ -60,6 +60,7 @@ function formatCardScore(score) {
 }
 
 function isOpenCard(detail) {
+  if (typeof (detail || {}).isOpen === "boolean") return detail.isOpen;
   return Boolean(String((detail || {}).definition || "").trim());
 }
 

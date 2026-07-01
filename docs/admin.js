@@ -226,7 +226,8 @@ function renderCardConfigEditor() {
   cardConfigPanel.hidden = false;
   cardConfigEditor.innerHTML = Object.entries(cardDetails)
     .map(([name, detail = {}], index) => {
-      const isOpen = Boolean(String(detail.definition || "").trim());
+      const isOpen =
+        typeof detail.isOpen === "boolean" ? detail.isOpen : Boolean(String(detail.definition || "").trim());
       return `
         <details class="card-config-card" data-card-name="${escapeHtml(name)}" ${index === 0 ? "open" : ""}>
           <summary>
@@ -234,6 +235,14 @@ function renderCardConfigEditor() {
             <span>${isOpen ? "已开放" : "暂未开放"}</span>
           </summary>
           <div class="card-config-fields">
+            <label class="card-config-switch card-config-wide">
+              <input name="isOpen" type="checkbox" ${isOpen ? "checked" : ""} />
+              <span class="switch-ui" aria-hidden="true"></span>
+              <span>
+                <strong>开放申请</strong>
+                <small>开启后进入“已开放”，关闭后进入“暂未开放”且不能提交。</small>
+              </span>
+            </label>
             <label class="field">
               <span>周期</span>
               <input name="cycle" value="${escapeHtml(detail.cycle || "")}" />
@@ -272,6 +281,7 @@ function collectCardConfigEditor() {
     const scoreValue = cardEl.querySelector('[name="score"]').value;
     nextCards[name] = {
       ...(cardDetails[name] || {}),
+      isOpen: cardEl.querySelector('[name="isOpen"]').checked,
       cycle: cardEl.querySelector('[name="cycle"]').value.trim(),
       score: scoreValue === "" ? "" : Number(scoreValue),
       definition: cardEl.querySelector('[name="definition"]').value.trim(),

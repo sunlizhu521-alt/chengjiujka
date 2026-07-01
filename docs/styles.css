@@ -1434,6 +1434,65 @@ small {
   grid-column: 1 / -1;
 }
 
+.card-config-switch {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e2e0ff;
+  border-radius: 8px;
+  background: #fbfbff;
+  cursor: pointer;
+}
+
+.card-config-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card-config-switch .switch-ui {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d9d7eb;
+  transition: background 0.2s ease;
+}
+
+.card-config-switch .switch-ui::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(31, 33, 71, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.card-config-switch input:checked + .switch-ui {
+  background: var(--primary);
+}
+
+.card-config-switch input:checked + .switch-ui::after {
+  transform: translateX(20px);
+}
+
+.card-config-switch strong {
+  display: block;
+  color: #1f2147;
+}
+
+.card-config-switch small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+
 .card-config-fields textarea {
   min-height: 84px;
   resize: vertical;
