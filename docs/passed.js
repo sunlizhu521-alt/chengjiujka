@@ -7,6 +7,7 @@ const passedCardFilter = document.querySelector("#passedCardFilter");
 const passedValidityFilter = document.querySelector("#passedValidityFilter");
 const passedCardCountMin = document.querySelector("#passedCardCountMin");
 const passedScoreMin = document.querySelector("#passedScoreMin");
+const passedApplyBtn = document.querySelector("#passedApplyBtn");
 const passedResetBtn = document.querySelector("#passedResetBtn");
 const activeCardChart = document.querySelector("#activeCardChart");
 const departmentCardChart = document.querySelector("#departmentCardChart");
@@ -17,6 +18,14 @@ const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 
 let passedRecords = [];
+let activePassedFilters = {
+  keyword: "",
+  department: "",
+  cardType: "",
+  validity: "",
+  cardCountMin: "",
+  scoreMin: ""
+};
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => {
@@ -74,11 +83,19 @@ function hydrateFilters() {
   );
 }
 
+function readPassedFilters() {
+  return {
+    keyword: passedKeyword.value.trim().toLowerCase(),
+    department: passedDepartmentFilter.value,
+    cardType: passedCardFilter.value,
+    validity: passedValidityFilter.value,
+    cardCountMin: passedCardCountMin.value.trim(),
+    scoreMin: passedScoreMin.value.trim()
+  };
+}
+
 function matchesBaseFilters(item) {
-  const keyword = passedKeyword.value.trim().toLowerCase();
-  const department = passedDepartmentFilter.value;
-  const cardType = passedCardFilter.value;
-  const validity = passedValidityFilter.value;
+  const { keyword, department, cardType, validity } = activePassedFilters;
   const haystack = [
     item.applicantName,
     item.department,
@@ -118,8 +135,8 @@ function buildApplicantStats(records) {
 }
 
 function applyApplicantAggregateFilters(records) {
-  const cardCountText = passedCardCountMin.value.trim();
-  const scoreText = passedScoreMin.value.trim();
+  const cardCountText = activePassedFilters.cardCountMin;
+  const scoreText = activePassedFilters.scoreMin;
   const hasCardCountFilter = cardCountText !== "";
   const hasScoreFilter = scoreText !== "";
 
@@ -232,6 +249,7 @@ async function loadPassedRecords() {
     const expired = (result.expired || []).map((item) => ({ ...item, validity: item.validity || "expired" }));
     passedRecords = [...active, ...expired];
     hydrateFilters();
+    activePassedFilters = readPassedFilters();
     renderPassedRecords();
     setPassedMessage("已更新", "success");
   } catch (error) {
@@ -240,8 +258,9 @@ async function loadPassedRecords() {
   }
 }
 
-[passedKeyword, passedDepartmentFilter, passedCardFilter, passedValidityFilter, passedCardCountMin, passedScoreMin].forEach((input) => {
-  input.addEventListener("input", renderPassedRecords);
+passedApplyBtn.addEventListener("click", () => {
+  activePassedFilters = readPassedFilters();
+  renderPassedRecords();
 });
 
 passedResetBtn.addEventListener("click", () => {
@@ -251,6 +270,7 @@ passedResetBtn.addEventListener("click", () => {
   passedValidityFilter.value = "";
   passedCardCountMin.value = "";
   passedScoreMin.value = "";
+  activePassedFilters = readPassedFilters();
   renderPassedRecords();
 });
 

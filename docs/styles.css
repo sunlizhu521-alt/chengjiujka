@@ -683,6 +683,17 @@ small {
   align-items: end;
 }
 
+.passed-filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+}
+
+.passed-filter-actions button {
+  flex: 1;
+  min-width: 88px;
+}
+
 .filter-count,
 .section-count {
   align-self: center;
@@ -1962,6 +1973,10 @@ small {
   .review-form,
   .query-form {
     grid-template-columns: 1fr;
+  }
+
+  .passed-filter-actions {
+    width: 100%;
   }
 
   .coin-note-field {
