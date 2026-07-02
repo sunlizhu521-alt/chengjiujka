@@ -1604,12 +1604,6 @@ small {
   color: #b4232a;
 }
 
-.review-result-option.is-more:has(input:checked) {
-  border-color: #d9822b;
-  background: #fff6e6;
-  color: #9a5a00;
-}
-
 .review-result-option input:disabled,
 .review-result-option:has(input:disabled) {
   cursor: not-allowed;

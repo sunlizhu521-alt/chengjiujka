@@ -192,7 +192,7 @@ function setPermissionMessage(text, type) {
 
 function normalizeReviewStatus(status) {
   if (status === "驳回") return "不通过";
-  if (status === "需补充") return "需补资料";
+  if (status === "需补充" || status === "需补资料") return "不通过";
   return status || "待评审";
 }
 
@@ -200,7 +200,7 @@ function badgeClass(status) {
   status = normalizeReviewStatus(status);
   if (status === "通过") return "badge pass";
   if (status === "不通过") return "badge reject";
-  if (status === "待评审" || status === "需补资料") return "badge pending";
+  if (status === "待评审") return "badge pending";
   return "badge";
 }
 
@@ -515,14 +515,12 @@ function renderSummary(records) {
   const pending = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "待评审").length;
   const passed = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "通过").length;
   const rejected = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "不通过").length;
-  const needMore = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "需补资料").length;
 
   summaryRow.innerHTML = [
     ["当前记录", total],
     ["待评审", pending],
     ["已通过", passed],
-    ["不通过", rejected],
-    ["需补资料", needMore]
+    ["不通过", rejected]
   ]
     .map((item) => `<div class="summary-card"><strong>${item[1]}</strong><span>${item[0]}</span></div>`)
     .join("");
@@ -662,10 +660,10 @@ function renderReviewForm(item) {
       <form class="review-form">
         <div class="review-result-options" role="group" aria-label="评审结果">
           <strong>评审结果：<b>*</b></strong>
-          ${["通过", "不通过", "需补资料"]
+          ${["通过", "不通过"]
             .map(
               (status) => `
-                <label class="review-result-option ${status === "通过" ? "is-pass" : status === "不通过" ? "is-reject" : "is-more"}">
+                <label class="review-result-option ${status === "通过" ? "is-pass" : "is-reject"}">
                   <input type="radio" name="reviewStatus" value="${status}" ${myVote.status === status ? "checked" : ""} ${disabledAttr} required />
                   <span>${status}</span>
                 </label>

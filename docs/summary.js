@@ -53,7 +53,7 @@ function canDeleteRecords(user = currentUser) {
 
 function normalizeReviewStatus(status) {
   if (status === "驳回") return "不通过";
-  if (status === "需补充") return "需补资料";
+  if (status === "需补充" || status === "需补资料") return "不通过";
   return status || "待评审";
 }
 
@@ -61,7 +61,7 @@ function statusBadge(status) {
   const normalized = normalizeReviewStatus(status);
   if (normalized === "通过") return "badge pass";
   if (normalized === "不通过") return "badge reject";
-  if (normalized === "待评审" || normalized === "需补资料") return "badge pending";
+  if (normalized === "待评审") return "badge pending";
   return "badge";
 }
 
@@ -124,7 +124,6 @@ function renderSummary(records) {
   const total = records.length;
   const passed = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "通过").length;
   const rejected = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "不通过").length;
-  const needMore = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "需补资料").length;
   const pending = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "待评审").length;
   const totalScore = records
     .filter((item) => normalizeReviewStatus(item.reviewStatus) === "通过")
@@ -134,7 +133,6 @@ function renderSummary(records) {
     ["汇总记录", total],
     ["通过", passed],
     ["不通过", rejected],
-    ["需补资料", needMore],
     ["待评审", pending],
     ["通过分值", totalScore]
   ]

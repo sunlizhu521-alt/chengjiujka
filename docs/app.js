@@ -206,6 +206,11 @@ function setQueryResult(content, type = "") {
   queryResult.innerHTML = content;
 }
 
+function normalizeReviewStatus(status) {
+  if (status === "驳回" || status === "需补充" || status === "需补资料") return "不通过";
+  return status || "待评审";
+}
+
 function renderResultRecords(records) {
   if (!records.length) {
     return '<p class="empty-files">未查询到匹配的申请记录，请核对姓名和秘钥。</p>';
@@ -217,7 +222,7 @@ function renderResultRecords(records) {
         <article class="result-card">
           <div class="result-card-head">
             <strong>${escapeHtml(item.cardType)}</strong>
-            <span class="result-status">${escapeHtml(item.reviewStatus || "待评审")}</span>
+            <span class="result-status">${escapeHtml(normalizeReviewStatus(item.reviewStatus))}</span>
           </div>
           <div class="result-grid">
             <div><span>申报日期</span>${escapeHtml(item.applicationDate || "未填写")}</div>

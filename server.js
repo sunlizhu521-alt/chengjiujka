@@ -26,7 +26,7 @@ const rosterFile = path.join(dataDir, "roster.json");
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const reviewMemberNames = [adminName, ...reviewerNames];
-const reviewStatuses = new Set(["通过", "不通过", "需补资料"]);
+const reviewStatuses = new Set(["通过", "不通过"]);
 const userRoleName = "user";
 const pagePermissions = [
   { key: "applicationPage", label: "申请页面" },
@@ -819,19 +819,16 @@ function calculateFinalReview(votes, cardType) {
   const statuses = reviewMemberNames.map((name) => (votes[name] || {}).status).filter(Boolean);
   const passed = statuses.filter((status) => status === "通过").length;
   const rejected = statuses.filter((status) => status === "不通过").length;
-  const needMore = statuses.filter((status) => status === "需补资料").length;
 
-  let reviewStatus = "需补资料";
-  if (passed >= 4) reviewStatus = "通过";
+  let reviewStatus = "待评审";
+  if (passed >= 3) reviewStatus = "通过";
   else if (rejected >= 3) reviewStatus = "不通过";
-  else if (needMore >= 2) reviewStatus = "需补资料";
 
   return {
     reviewStatus,
     score: reviewStatus === "通过" ? scoreForCardType(cardType) : "",
     passed,
     rejected,
-    needMore,
     voted: statuses.length
   };
 }
@@ -1331,7 +1328,7 @@ app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("r
   }
 
   if (!reviewStatuses.has(reviewStatus)) {
-    return res.status(400).json({ message: "评审结果必填，请选择通过、不通过或需补资料。" });
+    return res.status(400).json({ message: "评审结果必填，请选择通过或不通过。" });
   }
 
   const records = readSubmissions();
