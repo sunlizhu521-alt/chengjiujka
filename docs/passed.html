@@ -45,6 +45,14 @@
               <option value="expired">已过有效期</option>
             </select>
           </label>
+          <label class="field">
+            <span>成就卡数量大于</span>
+            <input id="passedCardCountMin" type="number" min="0" step="1" placeholder="例如 3" />
+          </label>
+          <label class="field">
+            <span>成就分值大于</span>
+            <input id="passedScoreMin" type="number" min="0" step="1" placeholder="例如 20" />
+          </label>
           <button id="passedResetBtn" type="button" class="secondary-button">重置筛选</button>
         </div>
       </section>
@@ -97,6 +105,6 @@
 
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./nav.js?v=20260702-02" defer></script>
-    <script src="./passed.js?v=20260702-04" defer></script>
+    <script src="./passed.js?v=20260702-05" defer></script>
   </body>
 </html>

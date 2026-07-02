@@ -5,6 +5,8 @@ const passedKeyword = document.querySelector("#passedKeyword");
 const passedDepartmentFilter = document.querySelector("#passedDepartmentFilter");
 const passedCardFilter = document.querySelector("#passedCardFilter");
 const passedValidityFilter = document.querySelector("#passedValidityFilter");
+const passedCardCountMin = document.querySelector("#passedCardCountMin");
+const passedScoreMin = document.querySelector("#passedScoreMin");
 const passedResetBtn = document.querySelector("#passedResetBtn");
 const activeCardChart = document.querySelector("#activeCardChart");
 const departmentCardChart = document.querySelector("#departmentCardChart");
@@ -72,7 +74,7 @@ function hydrateFilters() {
   );
 }
 
-function matchesFilters(item) {
+function matchesBaseFilters(item) {
   const keyword = passedKeyword.value.trim().toLowerCase();
   const department = passedDepartmentFilter.value;
   const cardType = passedCardFilter.value;
@@ -96,6 +98,44 @@ function matchesFilters(item) {
     (!cardType || item.cardType === cardType) &&
     (!validity || item.validity === validity)
   );
+}
+
+function numericScore(item) {
+  const score = Number(item.score);
+  return Number.isFinite(score) ? score : 0;
+}
+
+function buildApplicantStats(records) {
+  return records.reduce((stats, item) => {
+    const applicantName = String(item.applicantName || "").trim();
+    if (!applicantName) return stats;
+    const current = stats.get(applicantName) || { count: 0, score: 0 };
+    current.count += 1;
+    current.score += numericScore(item);
+    stats.set(applicantName, current);
+    return stats;
+  }, new Map());
+}
+
+function applyApplicantAggregateFilters(records) {
+  const cardCountText = passedCardCountMin.value.trim();
+  const scoreText = passedScoreMin.value.trim();
+  const hasCardCountFilter = cardCountText !== "";
+  const hasScoreFilter = scoreText !== "";
+
+  if (!hasCardCountFilter && !hasScoreFilter) return records;
+
+  const minCardCount = Number(cardCountText);
+  const minScore = Number(scoreText);
+  const applicantStats = buildApplicantStats(records);
+
+  return records.filter((item) => {
+    const applicantName = String(item.applicantName || "").trim();
+    const stats = applicantStats.get(applicantName) || { count: 0, score: 0 };
+    const cardCountOk = !hasCardCountFilter || (Number.isFinite(minCardCount) && stats.count > minCardCount);
+    const scoreOk = !hasScoreFilter || (Number.isFinite(minScore) && stats.score > minScore);
+    return cardCountOk && scoreOk;
+  });
 }
 
 function countBy(records, field) {
@@ -174,7 +214,8 @@ function renderPassedTable(records) {
 }
 
 function renderPassedRecords() {
-  const filtered = passedRecords.filter(matchesFilters);
+  const baseFiltered = passedRecords.filter(matchesBaseFilters);
+  const filtered = applyApplicantAggregateFilters(baseFiltered);
   passedCount.textContent = `${filtered.length} 条`;
   renderCharts(filtered);
   renderPassedTable(filtered);
@@ -199,7 +240,7 @@ async function loadPassedRecords() {
   }
 }
 
-[passedKeyword, passedDepartmentFilter, passedCardFilter, passedValidityFilter].forEach((input) => {
+[passedKeyword, passedDepartmentFilter, passedCardFilter, passedValidityFilter, passedCardCountMin, passedScoreMin].forEach((input) => {
   input.addEventListener("input", renderPassedRecords);
 });
 
@@ -208,6 +249,8 @@ passedResetBtn.addEventListener("click", () => {
   passedDepartmentFilter.value = "";
   passedCardFilter.value = "";
   passedValidityFilter.value = "";
+  passedCardCountMin.value = "";
+  passedScoreMin.value = "";
   renderPassedRecords();
 });
 
