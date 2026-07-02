@@ -1722,21 +1722,26 @@ small {
 
 .permission-admin {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .permission-list {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .permission-card {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  padding: 14px;
+  padding: 12px;
+  box-shadow: none;
+}
+
+.permission-card.is-protected {
+  background: #fbfbff;
 }
 
 .permission-user-head {
@@ -1749,7 +1754,7 @@ small {
 .permission-user-head strong {
   display: block;
   color: #1f2147;
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .permission-user-head span,
@@ -1760,37 +1765,41 @@ small {
 
 .permission-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
 }
 
 .permission-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 36px;
+  gap: 6px;
+  min-height: 32px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: #fbfbff;
-  padding: 0 10px;
+  padding: 0 9px;
   color: #30305b;
   font-weight: 700;
+  font-size: 13px;
 }
 
 .permission-checkbox input {
-  width: 16px;
-  min-height: 16px;
+  width: 14px;
+  min-height: 14px;
 }
 
 .permission-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
 }
 
 .permission-actions button {
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .delete-summary-record-btn {

@@ -1055,13 +1055,17 @@ app.post("/api/auth/users/:name/reset-secret", requireAdmin, (req, res) => {
 });
 
 app.delete("/api/auth/users/:name", requireAdmin, (req, res) => {
+  if (req.authUser.name !== adminName) {
+    return res.status(403).json({ message: "只有孙立柱管理员可以删除用户账号。" });
+  }
+
   const targetName = String(req.params.name || "").trim();
   const users = readUsers();
   const user = users[targetName];
   if (!user) {
     return res.status(404).json({ message: "用户不存在。" });
   }
-  if (isAdminUser(user)) {
+  if (targetName === adminName) {
     return res.status(400).json({ message: "不能删除孙立柱管理员账号。" });
   }
 

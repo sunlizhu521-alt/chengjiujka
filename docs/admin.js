@@ -104,6 +104,10 @@ function isAdminUser(user = currentUser) {
   return user && (user.role === "admin" || user.name === "孙立柱");
 }
 
+function isRootAdminUser(user = currentUser) {
+  return user && user.name === "孙立柱" && user.role === "admin";
+}
+
 function hasPageAccess(page, user = currentUser) {
   if (isAdminUser(user)) return true;
   return Array.isArray(user?.pageAccess) && user.pageAccess.includes(page);
@@ -340,6 +344,7 @@ function renderPermissionPanel() {
   permissionList.innerHTML = permissionUsers
     .map((user) => {
       const isBuiltInAdmin = isAdminUser(user);
+      const canDeleteUser = isRootAdminUser() && user.name !== "孙立柱";
       const access = new Set(user.pageAccess || []);
       const options = permissionPages
         .map((page) => `
@@ -354,22 +359,26 @@ function renderPermissionPanel() {
           </label>
         `)
         .join("");
+      const roleLabel = isBuiltInAdmin ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户";
+      const deleteButton = canDeleteUser
+        ? '<button type="button" class="delete-user-btn danger-button">删除</button>'
+        : "";
 
       return `
-        <article class="permission-card" data-user-name="${escapeHtml(user.name)}">
+        <article class="permission-card ${isBuiltInAdmin ? "is-protected" : ""}" data-user-name="${escapeHtml(user.name)}">
           <div class="permission-user-head">
             <div>
               <strong>${escapeHtml(user.name)}</strong>
-              <span>${escapeHtml(isBuiltInAdmin ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户")}</span>
+              <span>${escapeHtml(roleLabel)}</span>
             </div>
-            <small>${access.size ? `已授权 ${access.size} 项` : "待授权"}</small>
+            <div class="permission-actions">
+              <small>${access.size ? `已授权 ${access.size} 项` : "待授权"}</small>
+              <button type="button" class="save-user-access-btn" ${isBuiltInAdmin ? "disabled" : ""}>保存</button>
+              <button type="button" class="reset-user-secret-btn secondary-button" ${isBuiltInAdmin ? "disabled" : ""}>重置秘钥</button>
+              ${deleteButton}
+            </div>
           </div>
           <div class="permission-checkbox-grid">${options}</div>
-          <div class="permission-actions">
-            <button type="button" class="save-user-access-btn" ${isBuiltInAdmin ? "disabled" : ""}>保存授权</button>
-            <button type="button" class="reset-user-secret-btn secondary-button" ${isBuiltInAdmin ? "disabled" : ""}>重置秘钥</button>
-            <button type="button" class="delete-user-btn danger-button" ${isBuiltInAdmin ? "disabled" : ""}>删除账号</button>
-          </div>
         </article>
       `;
     })
