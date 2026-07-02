@@ -22,6 +22,7 @@ const submissionsFile = path.join(dataDir, "submissions.json");
 const usersFile = path.join(dataDir, "users.json");
 const cardConfigFile = path.join(dataDir, "card-config.json");
 const rosterFile = path.join(dataDir, "roster.json");
+const coinRecordsFile = path.join(dataDir, "coin-records.json");
 
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
@@ -34,7 +35,8 @@ const pagePermissions = [
   { key: "permissionManagement", label: "权限管理" },
   { key: "resultSummary", label: "结果汇总" },
   { key: "infoConfig", label: "信息配置" },
-  { key: "fileMaintenance", label: "文件维护" }
+  { key: "fileMaintenance", label: "文件维护" },
+  { key: "coinManagement", label: "成就币管理" }
 ];
 const pagePermissionKeys = pagePermissions.map((item) => item.key);
 const legacyPageKeyMap = {
@@ -161,13 +163,17 @@ if (!fs.existsSync(submissionsFile)) {
   fs.writeFileSync(submissionsFile, "[]", "utf8");
 }
 
+if (!fs.existsSync(coinRecordsFile)) {
+  fs.writeFileSync(coinRecordsFile, "[]", "utf8");
+}
+
 app.use((req, res, next) => {
   const origin = req.get("origin");
   if (origin) {
     res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN === "*" ? origin : ALLOWED_ORIGIN);
     res.setHeader("Vary", "Origin");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-token, x-review-token");
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
@@ -399,6 +405,15 @@ function readSubmissions() {
 
 function writeSubmissions(records) {
   writeJsonAtomic(submissionsFile, records);
+}
+
+function readCoinRecords() {
+  const content = fs.readFileSync(coinRecordsFile, "utf8").replace(/^\uFEFF/, "");
+  return JSON.parse(content || "[]");
+}
+
+function writeCoinRecords(records) {
+  writeJsonAtomic(coinRecordsFile, records);
 }
 
 function writeJsonAtomic(file, value) {
@@ -860,6 +875,70 @@ function scoreForCardType(cardType, explicitScore = "") {
   return legacyScore !== undefined && legacyScore !== null ? String(legacyScore) : "";
 }
 
+const coinRecordTypes = new Set(["card_issue", "leave_exchange", "reward_redeem"]);
+const coinRecordTypeLabels = {
+  card_issue: "成就卡发放",
+  leave_exchange: "年假兑换",
+  reward_redeem: "奖励兑换"
+};
+
+function normalizePositiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function publicCoinRecord(record) {
+  const amount = Number(record.amount || 0);
+  return {
+    id: record.id,
+    type: record.type,
+    typeLabel: coinRecordTypeLabels[record.type] || record.type,
+    applicantName: record.applicantName || "",
+    department: record.department || "",
+    cardType: record.cardType || "",
+    score: record.score || "",
+    leaveDays: record.leaveDays || "",
+    rewardName: record.rewardName || "",
+    coinAmount: Math.abs(amount),
+    amount,
+    recordDate: record.recordDate || "",
+    note: record.note || "",
+    createdBy: record.createdBy || "",
+    createdAt: record.createdAt || ""
+  };
+}
+
+function buildCoinBalances(records) {
+  const balances = new Map();
+
+  records.forEach((record) => {
+    const name = String(record.applicantName || "").trim();
+    if (!name) return;
+    const amount = Number(record.amount || 0);
+    const item =
+      balances.get(name) ||
+      {
+        applicantName: name,
+        department: record.department || "",
+        balance: 0,
+        cardIssue: 0,
+        leaveExchange: 0,
+        rewardRedeem: 0,
+        recordCount: 0
+      };
+
+    if (!item.department && record.department) item.department = record.department;
+    item.balance += amount;
+    item.recordCount += 1;
+    if (record.type === "card_issue") item.cardIssue += amount;
+    if (record.type === "leave_exchange") item.leaveExchange += amount;
+    if (record.type === "reward_redeem") item.rewardRedeem += Math.abs(amount);
+    balances.set(name, item);
+  });
+
+  return Array.from(balances.values()).sort((a, b) => b.balance - a.balance || a.applicantName.localeCompare(b.applicantName, "zh-CN"));
+}
+
 function publicPassedRecord(record, validity, rosterByName = new Map()) {
   const rosterEmployee = rosterByName.get(record.applicantName);
   return {
@@ -1313,6 +1392,115 @@ app.patch("/api/card-config", requireAdmin, (req, res) => {
     message: "成就卡配置已保存。",
     cards: normalized
   });
+});
+
+app.get("/api/coins", requireAdmin, (req, res) => {
+  const records = readCoinRecords().map(publicCoinRecord);
+  const totals = records.reduce(
+    (sum, record) => {
+      sum.balance += Number(record.amount || 0);
+      if (record.type === "card_issue") sum.cardIssue += Number(record.amount || 0);
+      if (record.type === "leave_exchange") sum.leaveExchange += Number(record.amount || 0);
+      if (record.type === "reward_redeem") sum.rewardRedeem += Math.abs(Number(record.amount || 0));
+      return sum;
+    },
+    { balance: 0, cardIssue: 0, leaveExchange: 0, rewardRedeem: 0 }
+  );
+
+  res.json({
+    records,
+    balances: buildCoinBalances(records),
+    totals: {
+      ...totals,
+      people: buildCoinBalances(records).length,
+      records: records.length
+    }
+  });
+});
+
+app.post("/api/coins", requireAdmin, (req, res) => {
+  if (req.authUser.name !== adminName) {
+    return res.status(403).json({ message: "只有管理员孙立柱可以登记成就币记录。" });
+  }
+
+  const type = String(req.body.type || "").trim();
+  const applicantName = String(req.body.applicantName || "").trim();
+  const department = String(req.body.department || "").trim();
+  const cardType = String(req.body.cardType || "").trim();
+  const rewardName = String(req.body.rewardName || "").trim();
+  const note = String(req.body.note || "").trim();
+  const recordDate = String(req.body.recordDate || localDateString()).trim();
+
+  if (!coinRecordTypes.has(type)) {
+    return res.status(400).json({ message: "请选择正确的成就币记录类型。" });
+  }
+  if (!applicantName) {
+    return res.status(400).json({ message: "请输入申报人姓名。" });
+  }
+
+  let amount = 0;
+  let score = "";
+  let leaveDays = "";
+
+  if (type === "card_issue") {
+    if (!cardType) return res.status(400).json({ message: "请选择成就卡项目。" });
+    score = normalizePositiveNumber(req.body.score) || normalizePositiveNumber(scoreForCardType(cardType));
+    if (!score) return res.status(400).json({ message: "请填写有效分值。" });
+    amount = score;
+  }
+
+  if (type === "leave_exchange") {
+    leaveDays = normalizePositiveNumber(req.body.leaveDays);
+    if (!leaveDays) return res.status(400).json({ message: "请填写有效年假天数。" });
+    amount = leaveDays * 20;
+  }
+
+  if (type === "reward_redeem") {
+    const coinAmount = normalizePositiveNumber(req.body.coinAmount);
+    if (!rewardName) return res.status(400).json({ message: "请填写兑换奖励名称。" });
+    if (!coinAmount) return res.status(400).json({ message: "请填写有效兑换成就币数量。" });
+    amount = -coinAmount;
+  }
+
+  const records = readCoinRecords();
+  const record = {
+    id: crypto.randomUUID(),
+    type,
+    applicantName,
+    department,
+    cardType: type === "card_issue" ? cardType : "",
+    score: type === "card_issue" ? String(score) : "",
+    leaveDays: type === "leave_exchange" ? String(leaveDays) : "",
+    rewardName: type === "reward_redeem" ? rewardName : "",
+    amount,
+    recordDate,
+    note,
+    createdBy: req.authUser.name,
+    createdAt: new Date().toISOString()
+  };
+  records.unshift(record);
+  writeCoinRecords(records);
+
+  res.json({
+    message: "成就币记录已保存。",
+    record: publicCoinRecord(record)
+  });
+});
+
+app.delete("/api/coins/:id", requireAdmin, (req, res) => {
+  if (req.authUser.name !== adminName) {
+    return res.status(403).json({ message: "只有管理员孙立柱可以删除成就币记录。" });
+  }
+
+  const records = readCoinRecords();
+  const index = records.findIndex((item) => item.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ message: "未找到成就币记录。" });
+  }
+
+  records.splice(index, 1);
+  writeCoinRecords(records);
+  res.json({ message: "成就币记录已删除。", id: req.params.id });
 });
 
 app.get("/api/submissions", requireReviewUser, requirePageAccess("reviewPage", "resultSummary"), (req, res) => {

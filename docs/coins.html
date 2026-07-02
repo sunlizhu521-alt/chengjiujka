@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>成就币管理</title>
+    <link rel="stylesheet" href="./styles.css?v=20260703-01" />
+  </head>
+  <body>
+    <header class="topbar nav-only">
+      <nav class="top-actions" data-page-nav aria-label="页面导航"></nav>
+    </header>
+
+    <main class="admin-layout">
+      <section class="panel login-panel" id="loginPanel">
+        <div>
+          <h2>成就币管理登录</h2>
+          <p>仅孙立柱管理员可登记发放、兑换和删除成就币流水。</p>
+        </div>
+        <form class="login-form" id="loginForm">
+          <label class="field">
+            <span>管理员姓名</span>
+            <select id="loginName" name="name" required>
+              <option value="孙立柱">孙立柱</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>管理员秘钥</span>
+            <input id="loginSecret" name="secret" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit">登录</button>
+        </form>
+        <p id="loginMessage" class="message" role="status"></p>
+      </section>
+
+      <section id="coinApp" hidden>
+        <section class="summary-row" id="coinSummary"></section>
+
+        <section class="panel coin-entry-panel">
+          <div class="summary-table-head">
+            <h2>成就币登记</h2>
+            <p id="coinFormMessage" class="message" role="status"></p>
+          </div>
+          <form id="coinForm" class="coin-form">
+            <label class="field">
+              <span>记录类型 <b>*</b></span>
+              <select id="coinType" name="type" required>
+                <option value="card_issue">成就卡发放</option>
+                <option value="leave_exchange">年假兑换</option>
+                <option value="reward_redeem">奖励兑换</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>姓名 <b>*</b></span>
+              <input id="applicantName" name="applicantName" required placeholder="请输入姓名" />
+            </label>
+            <label class="field">
+              <span>部门</span>
+              <input id="department" name="department" placeholder="可选" />
+            </label>
+            <label class="field">
+              <span>记录日期 <b>*</b></span>
+              <input id="recordDate" name="recordDate" type="date" required />
+            </label>
+
+            <label class="field coin-card-field">
+              <span>成就卡项目 <b>*</b></span>
+              <select id="cardType" name="cardType">
+                <option value="">请选择成就卡</option>
+              </select>
+            </label>
+            <label class="field coin-card-field">
+              <span>分值 / 成就币 <b>*</b></span>
+              <input id="score" name="score" type="number" min="0" step="1" placeholder="1 分 = 1 币" />
+            </label>
+
+            <label class="field coin-leave-field" hidden>
+              <span>年假天数 <b>*</b></span>
+              <input id="leaveDays" name="leaveDays" type="number" min="0" step="0.5" placeholder="1 天 = 20 币" />
+            </label>
+
+            <label class="field coin-reward-field" hidden>
+              <span>兑换奖励 <b>*</b></span>
+              <input id="rewardName" name="rewardName" placeholder="例如：礼品、福利、活动名" />
+            </label>
+            <label class="field coin-reward-field" hidden>
+              <span>消耗成就币 <b>*</b></span>
+              <input id="coinAmount" name="coinAmount" type="number" min="0" step="1" placeholder="请输入兑换数量" />
+            </label>
+
+            <label class="field coin-note-field">
+              <span>备注</span>
+              <textarea id="note" name="note" rows="3" placeholder="可填写发放依据、兑换说明等"></textarea>
+            </label>
+            <div class="coin-form-actions">
+              <strong id="amountPreview">本次变动：+0 币</strong>
+              <button type="submit">保存记录</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel coin-filter-panel">
+          <label class="field">
+            <span>记录类型</span>
+            <select id="typeFilter">
+              <option value="">全部类型</option>
+              <option value="card_issue">成就卡发放</option>
+              <option value="leave_exchange">年假兑换</option>
+              <option value="reward_redeem">奖励兑换</option>
+            </select>
+          </label>
+          <label class="field search-field">
+            <span>搜索</span>
+            <input id="searchInput" placeholder="姓名、部门、成就卡、奖励、备注" />
+          </label>
+          <button id="resetFilterBtn" type="button">重置筛选</button>
+        </section>
+
+        <section class="panel summary-table-panel">
+          <div class="summary-table-head">
+            <h2>成就币流水</h2>
+            <p id="recordMessage" class="message" role="status"></p>
+          </div>
+          <div class="table-wrap">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>序号</th>
+                  <th>姓名</th>
+                  <th>部门</th>
+                  <th>类型</th>
+                  <th>项目 / 奖励</th>
+                  <th>分值 / 天数</th>
+                  <th>成就币</th>
+                  <th>日期</th>
+                  <th>备注</th>
+                  <th>登记人</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="coinRecordBody">
+                <tr>
+                  <td colspan="11">登录后加载成就币流水。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel summary-table-panel">
+          <div class="summary-table-head">
+            <h2>人员余额</h2>
+          </div>
+          <div class="table-wrap">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>部门</th>
+                  <th>当前余额</th>
+                  <th>成就卡发放</th>
+                  <th>年假兑换</th>
+                  <th>奖励兑换</th>
+                  <th>记录数</th>
+                </tr>
+              </thead>
+              <tbody id="coinBalanceBody">
+                <tr>
+                  <td colspan="7">暂无余额数据。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./config.js?v=20260701-01" defer></script>
+    <script src="./card-data.js?v=20260611-24" defer></script>
+    <script src="./nav.js?v=20260703-01" defer></script>
+    <script src="./coins.js?v=20260703-01" defer></script>
+  </body>
+</html>

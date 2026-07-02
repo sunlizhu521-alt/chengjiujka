@@ -940,6 +940,49 @@ small {
   margin-bottom: 18px;
 }
 
+.coin-entry-panel,
+.coin-filter-panel {
+  margin-bottom: 18px;
+}
+
+.coin-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.coin-note-field {
+  grid-column: span 3;
+}
+
+.coin-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.coin-form-actions strong {
+  color: #30305b;
+  white-space: nowrap;
+}
+
+.coin-filter-panel {
+  display: grid;
+  grid-template-columns: 180px minmax(240px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.coin-positive {
+  color: #148a44;
+}
+
+.coin-negative {
+  color: #d53636;
+}
+
 .login-panel {
   display: grid;
   grid-template-columns: 1fr;
@@ -1904,6 +1947,8 @@ small {
   .layout,
   .toolbar,
   .summary-toolbar,
+  .coin-form,
+  .coin-filter-panel,
   .maintenance-grid,
   .passed-filter-grid,
   .passed-chart-grid,
@@ -1917,6 +1962,15 @@ small {
   .review-form,
   .query-form {
     grid-template-columns: 1fr;
+  }
+
+  .coin-note-field {
+    grid-column: auto;
+  }
+
+  .coin-form-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .grid,
