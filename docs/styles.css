@@ -1528,18 +1528,24 @@ small {
   white-space: nowrap;
 }
 
+.review-result-options {
+  align-items: stretch;
+  gap: 10px;
+  background: #fbfbff;
+}
+
 .reviewer-checks strong,
 .review-result-options strong {
   color: #30305b;
   font-weight: 700;
+  align-self: center;
 }
 
 .review-result-options b {
   color: var(--red);
 }
 
-.reviewer-checks label,
-.review-result-options label {
+.reviewer-checks label {
   display: inline-flex;
   align-items: center;
   flex-direction: row-reverse;
@@ -1549,8 +1555,68 @@ small {
   white-space: nowrap;
 }
 
-.reviewer-checks input,
-.review-result-options input {
+.review-result-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 9px;
+  min-width: 112px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #30305b;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0 14px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.review-result-option:hover {
+  border-color: #8b8df5;
+  box-shadow: 0 8px 18px rgba(102, 105, 238, 0.12);
+}
+
+.review-result-option input {
+  width: 18px;
+  min-height: 18px;
+  accent-color: var(--blue);
+}
+
+.review-result-option:has(input:checked) {
+  box-shadow: 0 10px 20px rgba(102, 105, 238, 0.18);
+}
+
+.review-result-option.is-pass:has(input:checked) {
+  border-color: #18a058;
+  background: #eaf8f0;
+  color: #08783b;
+}
+
+.review-result-option.is-reject:has(input:checked) {
+  border-color: #e5484d;
+  background: #fff0f0;
+  color: #b4232a;
+}
+
+.review-result-option.is-more:has(input:checked) {
+  border-color: #d9822b;
+  background: #fff6e6;
+  color: #9a5a00;
+}
+
+.review-result-option input:disabled,
+.review-result-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.reviewer-checks input {
   width: 16px;
   min-height: 16px;
 }
@@ -1880,6 +1946,11 @@ small {
     align-items: flex-start;
     flex-direction: column;
     white-space: normal;
+  }
+
+  .review-result-option {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .admin-link {

@@ -665,7 +665,7 @@ function renderReviewForm(item) {
           ${["通过", "不通过", "需补资料"]
             .map(
               (status) => `
-                <label>
+                <label class="review-result-option ${status === "通过" ? "is-pass" : status === "不通过" ? "is-reject" : "is-more"}">
                   <input type="radio" name="reviewStatus" value="${status}" ${myVote.status === status ? "checked" : ""} ${disabledAttr} required />
                   <span>${status}</span>
                 </label>
