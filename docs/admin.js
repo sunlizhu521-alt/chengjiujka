@@ -1212,6 +1212,7 @@ async function restoreSession() {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "登录已过期");
+    localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
     if (hasPageAccess("reviewPage", result.user)) await loadRecords();

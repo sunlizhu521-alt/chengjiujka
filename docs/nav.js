@@ -13,10 +13,17 @@ const legacyPageKeyMapForNav = {
   summary: "resultSummary",
   cardConfig: "infoConfig"
 };
+const navTokenKey = "chengjiukaReviewToken";
+const navUserKey = "chengjiukaReviewUser";
+const navApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
+
+function navApiUrl(path) {
+  return navApiBase ? `${navApiBase}${path}` : path;
+}
 
 function readNavUser() {
   try {
-    return JSON.parse(localStorage.getItem("chengjiukaReviewUser") || "null");
+    return JSON.parse(localStorage.getItem(navUserKey) || "null");
   } catch {
     return null;
   }
@@ -67,3 +74,28 @@ function renderPageNav() {
 }
 
 renderPageNav();
+
+async function refreshNavUser() {
+  const token = localStorage.getItem(navTokenKey);
+  if (!token) return;
+
+  try {
+    const response = await fetch(navApiUrl("/api/auth/me"), {
+      headers: { "x-review-token": token }
+    });
+    const result = await response.json();
+    if (!response.ok || !result.user) {
+      localStorage.removeItem(navTokenKey);
+      localStorage.removeItem(navUserKey);
+      renderPageNav();
+      return;
+    }
+    localStorage.setItem(navUserKey, JSON.stringify(result.user));
+  } catch {
+    return;
+  }
+
+  renderPageNav();
+}
+
+refreshNavUser();

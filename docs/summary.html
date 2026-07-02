@@ -14,14 +14,19 @@
     <main class="admin-layout">
       <section class="panel summary-toolbar">
         <label class="field token-field">
-          <span>管理员姓名</span>
-          <select id="adminName">
-            <option value="孙立柱">孙立柱</option>
-          </select>
+          <span>姓名</span>
+          <input id="adminName" list="summaryUserNames" autocomplete="username" placeholder="请输入姓名" />
+          <datalist id="summaryUserNames">
+            <option value="孙立柱"></option>
+            <option value="王斌"></option>
+            <option value="惠李伟"></option>
+            <option value="蒋炳兰"></option>
+            <option value="任蒨"></option>
+          </datalist>
         </label>
         <label class="field token-field">
-          <span>管理员秘钥</span>
-          <input id="adminSecret" type="password" placeholder="请输入管理员秘钥" />
+          <span>登录秘钥</span>
+          <input id="adminSecret" type="password" placeholder="请输入登录秘钥" />
         </label>
         <label class="field">
           <span>项目筛选</span>
@@ -91,7 +96,7 @@
     </main>
 
     <script src="./config.js?v=20260611-13" defer></script>
-    <script src="./nav.js?v=20260702-02" defer></script>
-    <script src="./summary.js?v=20260701-08" defer></script>
+    <script src="./nav.js?v=20260702-03" defer></script>
+    <script src="./summary.js?v=20260702-02" defer></script>
   </body>
 </html>

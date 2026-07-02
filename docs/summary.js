@@ -202,6 +202,7 @@ async function loadRecords() {
       localStorage.removeItem("chengjiukaReviewToken");
     } else {
       currentUser = meResult.user;
+      localStorage.setItem("chengjiukaReviewUser", JSON.stringify(meResult.user));
       if (typeof renderPageNav === "function") renderPageNav();
     }
   }
@@ -210,7 +211,7 @@ async function loadRecords() {
     const name = adminNameInput.value.trim();
     const secret = adminSecretInput.value.trim();
     if (!name || !secret) {
-      setSummaryMessage("请输入管理员秘钥。", "error");
+      setSummaryMessage("请输入姓名和登录秘钥。", "error");
       adminSecretInput.focus();
       return;
     }
