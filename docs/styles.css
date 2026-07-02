@@ -926,7 +926,7 @@ small {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 170px 150px 150px minmax(180px, 1fr) auto auto auto;
+  grid-template-columns: 170px 150px 150px auto minmax(200px, 1fr) auto;
   gap: 14px;
   align-items: end;
   margin-bottom: 18px;

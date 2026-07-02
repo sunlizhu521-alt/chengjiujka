@@ -34,7 +34,6 @@ const logoutBtn = document.querySelector("#logoutBtn");
 const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
 const searchInput = document.querySelector("#searchInput");
-const loadBtn = document.querySelector("#loadBtn");
 const prevRecordBtn = document.querySelector("#prevRecordBtn");
 const nextRecordBtn = document.querySelector("#nextRecordBtn");
 const recordsEl = document.querySelector("#records");
@@ -823,9 +822,7 @@ async function loadRecords() {
     return;
   }
 
-  loadBtn.disabled = true;
-  loadBtn.textContent = "加载中...";
-  setAdminMessage("", "");
+  setAdminMessage("正在刷新记录...", "");
 
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
@@ -839,9 +836,6 @@ async function loadRecords() {
   } catch (error) {
     setAdminMessage(error.message, "error");
     if (/登录|权限|token|401/.test(error.message)) showLogin();
-  } finally {
-    loadBtn.disabled = false;
-    loadBtn.textContent = "加载记录";
   }
 }
 
@@ -1089,7 +1083,6 @@ nextRecordBtn.addEventListener("click", () => {
 });
 
 logoutBtn.addEventListener("click", showLogin);
-loadBtn.addEventListener("click", loadRecords);
 loadUsersBtn.addEventListener("click", loadPermissionUsers);
 window.addEventListener("hashchange", applyAdminModule);
 
