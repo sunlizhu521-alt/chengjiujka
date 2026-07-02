@@ -717,13 +717,31 @@ small {
 }
 
 .passed-chart-card h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin: 0;
   font-size: 17px;
 }
 
+.passed-chart-card h2 span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--blue-dark);
+  padding: 3px 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .bar-chart {
   display: grid;
+  align-content: start;
   gap: 9px;
+  height: 258px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .bar-row {

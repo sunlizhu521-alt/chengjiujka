@@ -9,6 +9,8 @@ const passedResetBtn = document.querySelector("#passedResetBtn");
 const activeCardChart = document.querySelector("#activeCardChart");
 const departmentCardChart = document.querySelector("#departmentCardChart");
 const applicantTopChart = document.querySelector("#applicantTopChart");
+const activeCardTotal = document.querySelector("#activeCardTotal");
+const departmentCardTotal = document.querySelector("#departmentCardTotal");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 
@@ -135,9 +137,11 @@ function renderBarChart(container, entries) {
 
 function renderCharts(records) {
   const activeRecords = records.filter((item) => item.validity === "active");
+  activeCardTotal.textContent = activeRecords.length;
+  departmentCardTotal.textContent = records.length;
   renderBarChart(activeCardChart, topEntries(countBy(activeRecords, "cardType")));
   renderBarChart(departmentCardChart, topEntries(countBy(records, "department")));
-  renderBarChart(applicantTopChart, topEntries(countBy(records, "applicantName"), 10));
+  renderBarChart(applicantTopChart, topEntries(countBy(records, "applicantName"), 15));
 }
 
 function renderPassedTable(records) {
