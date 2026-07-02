@@ -6,6 +6,9 @@ const passedDepartmentFilter = document.querySelector("#passedDepartmentFilter")
 const passedCardFilter = document.querySelector("#passedCardFilter");
 const passedValidityFilter = document.querySelector("#passedValidityFilter");
 const passedResetBtn = document.querySelector("#passedResetBtn");
+const activeCardChart = document.querySelector("#activeCardChart");
+const departmentCardChart = document.querySelector("#departmentCardChart");
+const applicantTopChart = document.querySelector("#applicantTopChart");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 
@@ -93,6 +96,50 @@ function matchesFilters(item) {
   );
 }
 
+function countBy(records, field) {
+  return records.reduce((counts, item) => {
+    const key = String(item[field] || "未填写").trim() || "未填写";
+    counts.set(key, (counts.get(key) || 0) + 1);
+    return counts;
+  }, new Map());
+}
+
+function topEntries(counts, limit = Infinity) {
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-CN"))
+    .slice(0, limit);
+}
+
+function renderBarChart(container, entries) {
+  if (!entries.length) {
+    container.innerHTML = '<p class="empty-files">暂无数据。</p>';
+    return;
+  }
+
+  const maxValue = Math.max(...entries.map(([, value]) => value), 1);
+  container.innerHTML = entries
+    .map(([label, value]) => {
+      const width = Math.max(5, Math.round((value / maxValue) * 100));
+      return `
+        <div class="bar-row">
+          <span class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+          <div class="bar-track">
+            <span class="bar-fill" style="width:${width}%"></span>
+          </div>
+          <strong>${value}</strong>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderCharts(records) {
+  const activeRecords = records.filter((item) => item.validity === "active");
+  renderBarChart(activeCardChart, topEntries(countBy(activeRecords, "cardType")));
+  renderBarChart(departmentCardChart, topEntries(countBy(records, "department")));
+  renderBarChart(applicantTopChart, topEntries(countBy(records, "applicantName"), 10));
+}
+
 function renderPassedTable(records) {
   if (!records.length) {
     passedTableBody.innerHTML = '<tr><td colspan="9">暂无记录。</td></tr>';
@@ -125,6 +172,7 @@ function renderPassedTable(records) {
 function renderPassedRecords() {
   const filtered = passedRecords.filter(matchesFilters);
   passedCount.textContent = `${filtered.length} 条`;
+  renderCharts(filtered);
   renderPassedTable(filtered);
 }
 
