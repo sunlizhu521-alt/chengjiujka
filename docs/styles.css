@@ -951,6 +951,18 @@ small {
   margin-bottom: 18px;
 }
 
+.summary-toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  white-space: nowrap;
+}
+
+.summary-toolbar-actions button {
+  min-height: 42px;
+  padding: 0 14px;
+}
+
 .coin-entry-panel,
 .coin-filter-panel {
   margin-bottom: 18px;
@@ -1129,6 +1141,17 @@ small {
   background: #f4f4ff;
   color: #30305b;
   white-space: nowrap;
+}
+
+.summary-select-cell {
+  width: 48px;
+  text-align: center;
+}
+
+.summary-select-cell input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
 }
 
 .summary-table tbody tr:hover {
@@ -2013,6 +2036,11 @@ small {
   .review-form,
   .query-form {
     grid-template-columns: 1fr;
+  }
+
+  .summary-toolbar-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .passed-filter-actions {

@@ -52,7 +52,10 @@
           <span>搜索</span>
           <input id="searchInput" placeholder="编号、姓名、部门、岗位、申请内容" />
         </label>
-        <button id="loadBtn" type="button">加载汇总</button>
+        <div class="summary-toolbar-actions">
+          <button id="bulkDeleteBtn" class="danger-button" type="button" disabled>批量删除</button>
+          <button id="loadBtn" type="button">加载汇总</button>
+        </div>
       </section>
 
       <section class="summary-row" id="summaryRow"></section>
@@ -65,6 +68,9 @@
           <table class="summary-table">
             <thead>
               <tr>
+                <th class="summary-select-cell">
+                  <input id="summarySelectAll" type="checkbox" aria-label="选择当前筛选结果" />
+                </th>
                 <th>序号</th>
                 <th>申请编号</th>
                 <th>申报人</th>
@@ -86,7 +92,7 @@
             </thead>
             <tbody id="summaryBody">
               <tr>
-                <td colspan="17">请输入管理员秘钥后加载汇总。</td>
+                <td colspan="18">请输入管理员秘钥后加载汇总。</td>
               </tr>
             </tbody>
           </table>
@@ -96,6 +102,6 @@
 
     <script src="./config.js?v=20260611-13" defer></script>
     <script src="./nav.js?v=20260703-04" defer></script>
-    <script src="./summary.js?v=20260702-03" defer></script>
+    <script src="./summary.js?v=20260703-01" defer></script>
   </body>
 </html>

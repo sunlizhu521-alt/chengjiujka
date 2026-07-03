@@ -1,4 +1,5 @@
 let allRecords = [];
+let selectedRecordIds = new Set();
 let authToken = localStorage.getItem("chengjiukaReviewToken") || "";
 let currentUser = null;
 
@@ -8,6 +9,8 @@ const cardFilter = document.querySelector("#cardFilter");
 const statusFilter = document.querySelector("#statusFilter");
 const searchInput = document.querySelector("#searchInput");
 const loadBtn = document.querySelector("#loadBtn");
+const bulkDeleteBtn = document.querySelector("#bulkDeleteBtn");
+const summarySelectAll = document.querySelector("#summarySelectAll");
 const summaryRow = document.querySelector("#summaryRow");
 const summaryBody = document.querySelector("#summaryBody");
 const summaryMessage = document.querySelector("#summaryMessage");
@@ -140,20 +143,45 @@ function renderSummary(records) {
     .join("");
 }
 
+function updateSelectionState(records = filteredRecords()) {
+  const visibleIds = records.map((item) => item.id).filter(Boolean);
+  const selectedVisibleCount = visibleIds.filter((id) => selectedRecordIds.has(id)).length;
+  const canBulkDelete = canDeleteRecords();
+
+  if (summarySelectAll) {
+    summarySelectAll.disabled = !canBulkDelete || visibleIds.length === 0;
+    summarySelectAll.checked = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+    summarySelectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleIds.length;
+  }
+
+  if (bulkDeleteBtn) {
+    bulkDeleteBtn.disabled = !canBulkDelete || selectedRecordIds.size === 0;
+    bulkDeleteBtn.textContent = selectedRecordIds.size > 0 ? `批量删除（${selectedRecordIds.size}）` : "批量删除";
+  }
+}
+
 function renderTable() {
   const records = filteredRecords();
   renderSummary(records);
 
+  selectedRecordIds = new Set([...selectedRecordIds].filter((id) => allRecords.some((item) => item.id === id)));
+
   if (records.length === 0) {
-    summaryBody.innerHTML = '<tr><td colspan="17">暂无符合条件的记录。</td></tr>';
+    summaryBody.innerHTML = '<tr><td colspan="18">暂无符合条件的记录。</td></tr>';
+    updateSelectionState(records);
     return;
   }
 
   summaryBody.innerHTML = records
     .map((item, index) => {
       const status = normalizeReviewStatus(item.reviewStatus);
+      const checked = selectedRecordIds.has(item.id) ? "checked" : "";
+      const disabled = canDeleteRecords() ? "" : "disabled";
       return `
         <tr>
+          <td data-label="选择" class="summary-select-cell">
+            <input class="summary-record-checkbox" type="checkbox" data-id="${escapeHtml(item.id)}" aria-label="选择 ${escapeHtml(item.applicantName)} ${escapeHtml(item.cardType)}" ${checked} ${disabled} />
+          </td>
           <td data-label="序号">${index + 1}</td>
           <td data-label="申请编号">${escapeHtml(shortId(item.id))}</td>
           <td data-label="申报人">${escapeHtml(item.applicantName)}</td>
@@ -181,6 +209,7 @@ function renderTable() {
       `;
     })
     .join("");
+  updateSelectionState(records);
 }
 
 async function loadRecords() {
@@ -246,6 +275,7 @@ async function loadRecords() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "加载失败");
     allRecords = result;
+    selectedRecordIds.clear();
     renderTable();
     setSummaryMessage(`已加载全部 ${allRecords.length} 条申请记录。`, "success");
   } catch (error) {
@@ -261,6 +291,56 @@ async function loadRecords() {
 });
 
 loadBtn.addEventListener("click", loadRecords);
+
+if (summarySelectAll) {
+  summarySelectAll.addEventListener("change", () => {
+    if (!canDeleteRecords()) return;
+    const records = filteredRecords();
+    if (summarySelectAll.checked) {
+      records.forEach((item) => selectedRecordIds.add(item.id));
+    } else {
+      records.forEach((item) => selectedRecordIds.delete(item.id));
+    }
+    renderTable();
+  });
+}
+
+if (bulkDeleteBtn) {
+  bulkDeleteBtn.addEventListener("click", async () => {
+    if (!canDeleteRecords()) {
+      setSummaryMessage("只有孙立柱管理员可以批量删除申请记录。", "error");
+      return;
+    }
+
+    const ids = [...selectedRecordIds].filter((id) => allRecords.some((item) => item.id === id));
+    if (ids.length === 0) {
+      setSummaryMessage("请先选择要删除的申请记录。", "error");
+      return;
+    }
+
+    if (!window.confirm(`确认批量删除 ${ids.length} 条申请记录？删除后附件也会一并删除。`)) return;
+
+    bulkDeleteBtn.disabled = true;
+    bulkDeleteBtn.textContent = "删除中...";
+    try {
+      const response = await fetch(apiUrl("/api/submissions/bulk-delete"), {
+        method: "POST",
+        headers: authHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ ids })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "批量删除失败");
+      const deletedIds = new Set(result.deletedIds || ids);
+      allRecords = allRecords.filter((item) => !deletedIds.has(item.id));
+      selectedRecordIds.clear();
+      renderTable();
+      setSummaryMessage(result.message || "申请记录已批量删除。", "success");
+    } catch (error) {
+      setSummaryMessage(error.message, "error");
+      updateSelectionState();
+    }
+  });
+}
 
 summaryBody.addEventListener("click", async (event) => {
   const button = event.target.closest(".delete-summary-record-btn");
@@ -284,10 +364,29 @@ summaryBody.addEventListener("click", async (event) => {
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "删除失败");
     allRecords = allRecords.filter((item) => item.id !== id);
+    selectedRecordIds.delete(id);
     renderTable();
     setSummaryMessage(result.message || "申请记录已删除。", "success");
   } catch (error) {
     setSummaryMessage(error.message, "error");
     button.disabled = false;
   }
+});
+
+summaryBody.addEventListener("change", (event) => {
+  const checkbox = event.target.closest(".summary-record-checkbox");
+  if (!checkbox) return;
+  if (!canDeleteRecords()) {
+    checkbox.checked = false;
+    setSummaryMessage("只有孙立柱管理员可以选择并删除申请记录。", "error");
+    return;
+  }
+
+  const id = checkbox.dataset.id;
+  if (checkbox.checked) {
+    selectedRecordIds.add(id);
+  } else {
+    selectedRecordIds.delete(id);
+  }
+  updateSelectionState();
 });

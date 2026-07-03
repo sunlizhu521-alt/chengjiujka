@@ -1833,6 +1833,40 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   res.json(publicSubmissionForReview(record));
 });
 
+app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
+  if (req.authUser.name !== adminName) {
+    return res.status(403).json({ message: "只有管理员孙立柱可以批量删除申请记录。" });
+  }
+
+  const ids = Array.isArray(req.body.ids)
+    ? [...new Set(req.body.ids.map((id) => String(id || "").trim()).filter(Boolean))]
+    : [];
+  if (ids.length === 0) {
+    return res.status(400).json({ message: "请选择要删除的申请记录。" });
+  }
+
+  const idSet = new Set(ids);
+  const records = readSubmissions();
+  const removedRecords = records.filter((record) => idSet.has(record.id));
+  if (removedRecords.length === 0) {
+    return res.status(404).json({ message: "未找到可删除的申请记录。" });
+  }
+
+  const keptRecords = records.filter((record) => !idSet.has(record.id));
+  removeUploadedFiles(removedRecords.flatMap((record) => [...(record.attachments || []), ...(record.feedbackFiles || [])]));
+  writeSubmissions(keptRecords);
+  notifyDingTalk("批量删除申请记录", [
+    `操作人：${req.authUser.name}`,
+    `数量：${removedRecords.length}`,
+    `对象：${removedRecords.map((record) => `${record.applicantName}-${record.cardType}`).join("、")}`
+  ]);
+
+  res.json({
+    message: `已删除 ${removedRecords.length} 条申请记录。`,
+    deletedIds: removedRecords.map((record) => record.id)
+  });
+});
+
 app.delete("/api/submissions/:id", requireAdmin, (req, res) => {
   if (req.authUser.name !== adminName) {
     return res.status(403).json({ message: "只有管理员孙立柱可以删除申请记录。" });
