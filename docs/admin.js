@@ -617,74 +617,6 @@ function renderFeedbackFiles(item) {
   `;
 }
 
-function renderQuerySecretAdmin(item) {
-  if (!currentUser || currentUser.role !== "admin") return "";
-  const resetAt = item.querySecretResetAt ? `最近重置：${formatDate(item.querySecretResetAt)}` : "未重置过";
-
-  return `
-    <section class="query-secret-admin">
-      <h3>查询秘钥管理</h3>
-      <form class="query-secret-lookup-form">
-        <label class="field">
-          <span>提交人姓名</span>
-          <input name="applicantName" type="text" placeholder="输入姓名后查看秘钥" />
-        </label>
-        <button type="submit">查看秘钥</button>
-      </form>
-      <div class="query-secret-lookup-result">
-        <p class="empty-files">请输入提交人姓名后点击查看。</p>
-      </div>
-      <p><strong>当前记录状态：</strong>${item.querySecretSet === false ? "未设置" : "已设置"}，${escapeHtml(resetAt)}</p>
-      <form class="query-secret-form">
-        <label class="field">
-          <span>新的查询秘钥</span>
-          <input name="querySecret" type="text" minlength="4" placeholder="至少 4 位" required />
-        </label>
-        <button type="submit">重置查询秘钥</button>
-      </form>
-    </section>
-  `;
-}
-
-function renderQuerySecretLookup(records, applicantName) {
-  if (!applicantName) {
-    return '<p class="empty-files">请输入提交人姓名后点击查看。</p>';
-  }
-  if (records.length === 0) {
-    return `<p class="empty-files">未查询到“${escapeHtml(applicantName)}”的申请记录。</p>`;
-  }
-
-  const rows = records
-    .map((record) => {
-      const secretText = record.querySecretPlain ? record.querySecretPlain : "历史记录不可查看，可重置";
-      return `
-        <tr>
-          <td>${escapeHtml(record.applicantName)}</td>
-          <td>${escapeHtml(record.cardType)}</td>
-          <td>${escapeHtml(secretText)}</td>
-          <td>${escapeHtml(record.querySecretResetAt ? formatDate(record.querySecretResetAt) : "未重置")}</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  return `
-    <div class="query-secret-table-wrap">
-      <table class="query-secret-table">
-        <thead>
-          <tr>
-            <th>提交人姓名</th>
-            <th>成就卡</th>
-            <th>查询秘钥</th>
-            <th>重置时间</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-}
-
 function renderReviewForm(item) {
   const filesReady = (item.feedbackFiles || []).length > 0;
   const myVote = ((item.reviewVotes || {})[currentUser.name] || {});
@@ -813,7 +745,6 @@ function renderRecords() {
       ${renderFeedbackFiles(item)}
       ${renderReviewForm(item)}
       ${renderPublicResultConfirm(item)}
-      ${renderQuerySecretAdmin(item)}
     </article>
   `;
 }
@@ -1003,33 +934,6 @@ recordsEl.addEventListener("submit", async (event) => {
       if (!response.ok) throw new Error(result.message || "上传失败");
       replaceRecord(result);
       setAdminMessage("评审组反馈文件已上传。", "success");
-    } catch (error) {
-      setAdminMessage(error.message, "error");
-    }
-    return;
-  }
-
-  if (event.target.classList.contains("query-secret-lookup-form")) {
-    const form = event.target;
-    const applicantName = String(new FormData(form).get("applicantName") || "").trim();
-    const resultEl = form.parentElement.querySelector(".query-secret-lookup-result");
-    const matchedRecords = allRecords.filter((recordItem) => recordItem.applicantName === applicantName);
-    resultEl.innerHTML = renderQuerySecretLookup(matchedRecords, applicantName);
-    return;
-  }
-
-  if (event.target.classList.contains("query-secret-form")) {
-    const payload = Object.fromEntries(new FormData(event.target).entries());
-    try {
-      const response = await fetch(apiUrl(`/api/submissions/${id}/query-secret`), {
-        method: "PATCH",
-        headers: authHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "重置失败");
-      replaceRecord(result.record);
-      setAdminMessage("查询秘钥已重置，请把新秘钥告知员工本人。", "success");
     } catch (error) {
       setAdminMessage(error.message, "error");
     }

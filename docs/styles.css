@@ -1232,8 +1232,7 @@ small {
 .description-block,
 .attachments,
 .feedback-files,
-.public-result-confirm,
-.query-secret-admin {
+.public-result-confirm {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
@@ -1245,8 +1244,7 @@ small {
 .description-block strong,
 .attachments strong,
 .feedback-files strong,
-.public-result-confirm strong,
-.query-secret-admin strong {
+.public-result-confirm strong {
   display: block;
   color: var(--muted);
   font-size: 13px;
@@ -1438,14 +1436,11 @@ small {
 }
 
 .feedback-files,
-.public-result-confirm,
-.query-secret-admin {
+.public-result-confirm {
   margin-top: 14px;
 }
 
-.feedback-upload-form,
-.query-secret-form,
-.query-secret-lookup-form {
+.feedback-upload-form {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
@@ -1453,16 +1448,6 @@ small {
   border-top: 1px solid var(--line);
   margin-top: 12px;
   padding-top: 12px;
-}
-
-.query-secret-lookup-form {
-  border-top: 0;
-  margin-top: 0;
-  padding-top: 0;
-}
-
-.query-secret-lookup-result {
-  margin: 10px 0;
 }
 
 .feedback-upload-box {
@@ -1483,10 +1468,6 @@ small {
 .feedback-upload-box span {
   color: #27265f;
   font-weight: 800;
-}
-
-.query-secret-admin h3 {
-  margin-bottom: 8px;
 }
 
 .public-result-confirm h3 {
@@ -1512,40 +1493,6 @@ small {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.query-secret-admin p {
-  margin-bottom: 8px;
-  color: var(--muted);
-}
-
-.query-secret-table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  margin: 10px 0;
-}
-
-.query-secret-table {
-  width: 100%;
-  min-width: 620px;
-  border-collapse: collapse;
-  background: #fff;
-  font-size: 14px;
-}
-
-.query-secret-table th,
-.query-secret-table td {
-  border: 1px solid var(--line);
-  padding: 8px 10px;
-  text-align: left;
-  vertical-align: top;
-  overflow-wrap: anywhere;
-}
-
-.query-secret-table th {
-  background: #f4f4ff;
-  color: #30305b;
-  white-space: nowrap;
 }
 
 .vote-progress {
@@ -2031,8 +1978,6 @@ small {
   .card-config-fields,
   .feedback-upload-form,
   .import-inline-form,
-  .query-secret-form,
-  .query-secret-lookup-form,
   .review-form,
   .query-form {
     grid-template-columns: 1fr;
