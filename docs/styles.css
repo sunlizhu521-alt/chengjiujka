@@ -1222,7 +1222,7 @@ small {
 
 .record-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -1237,6 +1237,7 @@ small {
   border-radius: 8px;
   padding: 10px;
   background: #fbfbff;
+  min-width: 0;
 }
 
 .record-grid strong,
