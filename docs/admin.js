@@ -847,8 +847,10 @@ loginForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    if (hasPageAccess("reviewPage", result.user)) await loadRecords();
-    if (isAdminUser(result.user)) await loadPermissionUsers();
+    await Promise.all([
+      hasPageAccess("reviewPage", result.user) ? loadRecords() : Promise.resolve(),
+      isAdminUser(result.user) ? loadPermissionUsers() : Promise.resolve()
+    ]);
   } catch (error) {
     setLoginMessage(error.message, "error");
   }
@@ -874,8 +876,10 @@ setupForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    if (hasPageAccess("reviewPage", result.user)) await loadRecords();
-    if (isAdminUser(result.user)) await loadPermissionUsers();
+    await Promise.all([
+      hasPageAccess("reviewPage", result.user) ? loadRecords() : Promise.resolve(),
+      isAdminUser(result.user) ? loadPermissionUsers() : Promise.resolve()
+    ]);
   } catch (error) {
     setLoginMessage(error.message, "error");
   }
@@ -1206,8 +1210,10 @@ async function restoreSession() {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     await loadCardDetails();
     showReviewApp(result.user);
-    if (hasPageAccess("reviewPage", result.user)) await loadRecords();
-    if (isAdminUser(result.user)) await loadPermissionUsers();
+    await Promise.all([
+      hasPageAccess("reviewPage", result.user) ? loadRecords() : Promise.resolve(),
+      isAdminUser(result.user) ? loadPermissionUsers() : Promise.resolve()
+    ]);
   } catch {
     showLogin();
   }

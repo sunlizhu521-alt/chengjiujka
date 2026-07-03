@@ -25,6 +25,10 @@ const rosterFile = path.join(dataDir, "roster.json");
 const coinRecordsFile = path.join(dataDir, "coin-records.json");
 const deletedUsersFile = path.join(dataDir, "deleted-users.json");
 const dingtalkConfigFile = path.join(dataDir, "dingtalk-config.json");
+const jsonFileCache = new Map();
+const computedCache = {
+  publicPassed: null
+};
 
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
@@ -96,8 +100,7 @@ function normalizeCardDetails(details = {}) {
 
 function loadStoredCardDetails() {
   if (!fs.existsSync(cardConfigFile)) return null;
-  const content = fs.readFileSync(cardConfigFile, "utf8").replace(/^\uFEFF/, "");
-  return normalizeCardDetails(JSON.parse(content || "{}"));
+  return normalizeCardDetails(readJsonCached(cardConfigFile, {}));
 }
 
 function buildCardConfig(details) {
@@ -218,9 +221,7 @@ function readDingTalkRuntimeConfig() {
   }
 
   try {
-    if (!fs.existsSync(dingtalkConfigFile)) return { webhook: "", secret: "" };
-    const content = fs.readFileSync(dingtalkConfigFile, "utf8").replace(/^\uFEFF/, "");
-    const config = JSON.parse(content || "{}");
+    const config = readJsonCached(dingtalkConfigFile, {});
     return {
       webhook: String(config.webhook || "").trim(),
       secret: String(config.secret || "").trim()
@@ -428,8 +429,7 @@ function defaultUsers() {
 function readDeletedUsers() {
   if (!fs.existsSync(deletedUsersFile)) return [];
   try {
-    const content = fs.readFileSync(deletedUsersFile, "utf8").replace(/^\uFEFF/, "");
-    const names = JSON.parse(content || "[]");
+    const names = readJsonCached(deletedUsersFile, []);
     return Array.isArray(names) ? names : [];
   } catch {
     return [];
@@ -445,8 +445,7 @@ function addSubmissionApplicantsToUsers(users) {
 
   let changed = false;
   try {
-    const content = fs.readFileSync(submissionsFile, "utf8").replace(/^\uFEFF/, "");
-    const records = JSON.parse(content || "[]");
+    const records = readSubmissions();
     const deletedUsers = new Set(readDeletedUsers());
     records.forEach((record) => {
       const name = String(record.applicantName || "").trim();
@@ -499,8 +498,7 @@ function publicPermissionUsers(users, submissions = readSubmissions()) {
 function readUsers() {
   let users = {};
   if (fs.existsSync(usersFile)) {
-    const content = fs.readFileSync(usersFile, "utf8").replace(/^\uFEFF/, "");
-    users = JSON.parse(content || "{}");
+    users = readJsonCached(usersFile, {});
   }
 
   const defaults = defaultUsers();
@@ -576,8 +574,7 @@ function publicUser(user) {
 }
 
 function readSubmissions() {
-  const content = fs.readFileSync(submissionsFile, "utf8").replace(/^\uFEFF/, "");
-  return JSON.parse(content || "[]");
+  return readJsonCached(submissionsFile, []);
 }
 
 function writeSubmissions(records) {
@@ -585,8 +582,7 @@ function writeSubmissions(records) {
 }
 
 function readCoinRecords() {
-  const content = fs.readFileSync(coinRecordsFile, "utf8").replace(/^\uFEFF/, "");
-  return JSON.parse(content || "[]");
+  return readJsonCached(coinRecordsFile, []);
 }
 
 function writeCoinRecords(records) {
@@ -597,6 +593,43 @@ function writeJsonAtomic(file, value) {
   const tmp = file + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf8");
   fs.renameSync(tmp, file);
+  updateJsonCache(file, value);
+  invalidateComputedCaches();
+}
+
+function readJsonCached(file, fallbackValue) {
+  if (!fs.existsSync(file)) return fallbackValue;
+  const stat = fs.statSync(file);
+  const cached = jsonFileCache.get(file);
+  if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+    return cached.value;
+  }
+
+  const content = fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "");
+  const value = content ? JSON.parse(content) : fallbackValue;
+  jsonFileCache.set(file, {
+    mtimeMs: stat.mtimeMs,
+    size: stat.size,
+    value
+  });
+  return value;
+}
+
+function updateJsonCache(file, value) {
+  try {
+    const stat = fs.statSync(file);
+    jsonFileCache.set(file, {
+      mtimeMs: stat.mtimeMs,
+      size: stat.size,
+      value
+    });
+  } catch {
+    jsonFileCache.delete(file);
+  }
+}
+
+function invalidateComputedCaches() {
+  computedCache.publicPassed = null;
 }
 
 function normalizeRosterText(value) {
@@ -646,8 +679,7 @@ function readRoster() {
     return { updatedAt: "", count: 0, departments: [], employees: [] };
   }
 
-  const content = fs.readFileSync(rosterFile, "utf8").replace(/^\uFEFF/, "");
-  const roster = JSON.parse(content || "{}");
+  const roster = readJsonCached(rosterFile, {});
   return {
     updatedAt: roster.updatedAt || "",
     count: Number(roster.count || 0),
@@ -1194,6 +1226,36 @@ function groupPublicPassedRecords(records, now = new Date()) {
   );
 }
 
+function fileVersion(file) {
+  try {
+    const stat = fs.statSync(file);
+    return `${stat.mtimeMs}:${stat.size}`;
+  } catch {
+    return "missing";
+  }
+}
+
+function publicPassedCacheKey(now = new Date()) {
+  return [
+    fileVersion(submissionsFile),
+    fileVersion(rosterFile),
+    compactChinaDate(now),
+    JSON.stringify(cardCycles)
+  ].join("|");
+}
+
+function getPublicPassedGroups() {
+  const now = new Date();
+  const key = publicPassedCacheKey(now);
+  if (computedCache.publicPassed?.key === key) {
+    return computedCache.publicPassed.value;
+  }
+
+  const value = groupPublicPassedRecords(readSubmissions(), now);
+  computedCache.publicPassed = { key, value };
+  return value;
+}
+
 function findStoredFile(filename) {
   const safeName = path.basename(filename);
   const records = readSubmissions();
@@ -1544,8 +1606,8 @@ app.post("/api/results/query", (req, res) => {
 });
 
 app.get("/api/public/passed", (req, res) => {
-  const groups = groupPublicPassedRecords(readSubmissions());
-  res.json(groups);
+  res.setHeader("Cache-Control", "public, max-age=30");
+  res.json(getPublicPassedGroups());
 });
 
 app.get("/api/applicants/secret-status", (req, res) => {
@@ -1559,6 +1621,7 @@ app.get("/api/applicants/secret-status", (req, res) => {
 });
 
 app.get("/api/roster", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
   res.json(readRoster());
 });
 
@@ -1642,6 +1705,7 @@ app.post(
 );
 
 app.get("/api/card-config", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
   res.json({ cards: activeCardDetails });
 });
 

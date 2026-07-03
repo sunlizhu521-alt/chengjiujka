@@ -29,6 +29,7 @@ let currentCardFilter = "open";
 let applicantHasHistorySecret = false;
 let secretStatusTimer = null;
 let roster = { departments: [], employees: [] };
+const rosterCacheKey = "chengjiukaRosterCache:v2";
 
 dateInput.valueAsDate = new Date();
 
@@ -328,6 +329,39 @@ function renderRosterNameOptions(employees = []) {
     .join("");
 }
 
+function normalizeRosterPayload(payload = {}) {
+  return {
+    updatedAt: payload.updatedAt || "",
+    count: Number(payload.count || 0),
+    departments: Array.isArray(payload.departments) ? payload.departments : [],
+    employees: Array.isArray(payload.employees) ? payload.employees : []
+  };
+}
+
+function readCachedRoster() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(rosterCacheKey) || "null");
+    return cached && Array.isArray(cached.employees) ? normalizeRosterPayload(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedRoster(nextRoster) {
+  try {
+    localStorage.setItem(rosterCacheKey, JSON.stringify(nextRoster));
+  } catch {
+    // localStorage may be unavailable in private mode; ignore and keep network loading.
+  }
+}
+
+function applyRosterPayload(payload = {}) {
+  roster = normalizeRosterPayload(payload);
+  renderDepartmentOptions(roster.departments);
+  renderRosterNameOptions(roster.employees);
+  applyRosterInfoForApplicant();
+}
+
 function findRosterEmployeeByName(name) {
   const applicantName = String(name || "").trim();
   if (!applicantName || !Array.isArray(roster.employees)) return null;
@@ -356,22 +390,24 @@ function applyRosterInfoForApplicant() {
 
 async function loadRoster() {
   renderDepartmentOptions();
+  const cachedRoster = readCachedRoster();
+  if (cachedRoster) {
+    applyRosterPayload(cachedRoster);
+  }
   if (!hasBackend()) return;
 
   try {
     const response = await fetch(apiUrl("/api/roster"));
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "花名册加载失败");
-    roster = {
-      departments: Array.isArray(result.departments) ? result.departments : [],
-      employees: Array.isArray(result.employees) ? result.employees : []
-    };
-    renderDepartmentOptions(roster.departments);
-    renderRosterNameOptions(roster.employees);
-    applyRosterInfoForApplicant();
+    const nextRoster = normalizeRosterPayload(result);
+    writeCachedRoster(nextRoster);
+    applyRosterPayload(nextRoster);
   } catch {
-    renderDepartmentOptions();
-    renderRosterNameOptions([]);
+    if (!cachedRoster) {
+      renderDepartmentOptions();
+      renderRosterNameOptions([]);
+    }
   }
 }
 
@@ -572,9 +608,11 @@ resultQueryForm.addEventListener("submit", async (event) => {
 async function initializePage() {
   renderSelectedFiles();
   applyLoggedInApplicantName();
-  await loadRoster();
-  refreshApplicantSecretStatus().catch(() => {});
-  await loadCardDetails();
+  await Promise.all([
+    loadRoster(),
+    loadCardDetails(),
+    refreshApplicantSecretStatus().catch(() => {})
+  ]);
   renderCardChoices();
 }
 
