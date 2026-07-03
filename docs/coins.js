@@ -2,6 +2,8 @@ let authToken = localStorage.getItem("chengjiukaReviewToken") || "";
 let currentUser = null;
 let coinRecords = [];
 let coinBalances = [];
+let rosterEmployees = [];
+let lastAutoDepartment = "";
 
 const loginPanel = document.querySelector("#loginPanel");
 const coinApp = document.querySelector("#coinApp");
@@ -69,6 +71,10 @@ function setMessage(element, text, type) {
   element.className = `message ${type || ""}`;
 }
 
+function normalizeName(value) {
+  return String(value || "").trim();
+}
+
 function localDateValue(date = new Date()) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
@@ -115,6 +121,50 @@ function initCardOptions() {
 
   cardType.innerHTML =
     '<option value="">请选择成就卡</option>' + options.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+}
+
+async function loadRosterEmployees() {
+  try {
+    const response = await fetch(apiUrl("/api/roster"));
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "花名册加载失败");
+    rosterEmployees = Array.isArray(result.employees) ? result.employees : [];
+  } catch {
+    rosterEmployees = [];
+  }
+}
+
+function autofillDepartmentByName() {
+  const name = normalizeName(applicantName.value);
+  const currentDepartment = department.value.trim();
+  if (!name) {
+    if (currentDepartment && currentDepartment === lastAutoDepartment) department.value = "";
+    lastAutoDepartment = "";
+    return;
+  }
+  const employee = rosterEmployees.find((item) => normalizeName(item.name) === name);
+  if (!employee || !employee.department) {
+    if (currentDepartment && currentDepartment === lastAutoDepartment) department.value = "";
+    lastAutoDepartment = "";
+    return;
+  }
+
+  if (currentDepartment && currentDepartment !== lastAutoDepartment) return;
+
+  department.value = employee.department;
+  lastAutoDepartment = employee.department;
+}
+
+function markDepartmentManualEdit() {
+  if (department.value.trim() !== lastAutoDepartment) {
+    lastAutoDepartment = "";
+  }
+}
+
+function resetCoinFormState() {
+  lastAutoDepartment = "";
+  recordDate.value = localDateValue();
+  updateTypeFields();
 }
 
 function updateTypeFields() {
@@ -280,6 +330,7 @@ async function restoreSession() {
     }
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     showCoinApp(result.user);
+    await loadRosterEmployees();
     await loadCoins();
   } catch {
     showLogin();
@@ -311,6 +362,7 @@ loginForm.addEventListener("submit", async (event) => {
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
     loginSecret.value = "";
     showCoinApp(result.user);
+    await loadRosterEmployees();
     await loadCoins();
   } catch (error) {
     setMessage(loginMessage, error.message, "error");
@@ -344,8 +396,7 @@ coinForm.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(result.message || "成就币记录保存失败");
     setMessage(coinFormMessage, result.message || "成就币记录已保存。", "success");
     coinForm.reset();
-    recordDate.value = localDateValue();
-    updateTypeFields();
+    resetCoinFormState();
     await loadCoins();
   } catch (error) {
     setMessage(coinFormMessage, error.message, "error");
@@ -383,6 +434,9 @@ cardType.addEventListener("change", () => {
   if (configuredScore) score.value = configuredScore;
   updateAmountPreview();
 });
+applicantName.addEventListener("input", autofillDepartmentByName);
+applicantName.addEventListener("blur", autofillDepartmentByName);
+department.addEventListener("input", markDepartmentManualEdit);
 coinType.addEventListener("change", updateTypeFields);
 [score, leaveDays, coinAmount].forEach((input) => input.addEventListener("input", updateAmountPreview));
 [typeFilter, searchInput].forEach((input) => input.addEventListener("input", renderRecords));
