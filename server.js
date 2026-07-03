@@ -609,8 +609,9 @@ function normalizeRosterRows(rows = []) {
   rows.forEach((row) => {
     const name = normalizeRosterText(row["姓名"] || row.name || row["员工姓名"]);
     const department = normalizeRosterText(row["一级部门"] || row["所属部门"] || row["部门"] || row.department);
+    const position = normalizeRosterText(row["二级部门"] || row["岗位"] || row.position);
     if (!name || !department) return;
-    employeesByName.set(name, { name, department });
+    employeesByName.set(name, { name, department, position });
   });
 
   const employees = Array.from(employeesByName.values()).sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
@@ -651,7 +652,13 @@ function readRoster() {
     updatedAt: roster.updatedAt || "",
     count: Number(roster.count || 0),
     departments: Array.isArray(roster.departments) ? roster.departments : [],
-    employees: Array.isArray(roster.employees) ? roster.employees : []
+    employees: Array.isArray(roster.employees)
+      ? roster.employees.map((employee) => ({
+          name: normalizeRosterText(employee.name),
+          department: normalizeRosterText(employee.department),
+          position: normalizeRosterText(employee.position)
+        }))
+      : []
   };
 }
 
@@ -666,7 +673,13 @@ function writeRoster(roster) {
     updatedAt: roster.updatedAt || new Date().toISOString(),
     count: Number(roster.count || 0),
     departments: Array.isArray(roster.departments) ? roster.departments : [],
-    employees: Array.isArray(roster.employees) ? roster.employees : []
+    employees: Array.isArray(roster.employees)
+      ? roster.employees.map((employee) => ({
+          name: normalizeRosterText(employee.name),
+          department: normalizeRosterText(employee.department),
+          position: normalizeRosterText(employee.position)
+        }))
+      : []
   };
   writeJsonAtomic(rosterFile, normalized);
   return normalized;
@@ -1473,7 +1486,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     cardType,
     applicantName: normalizedApplicantName,
     department: rosterEmployee.department || department.trim(),
-    position: position.trim(),
+    position: rosterEmployee.position || position.trim(),
     contact: String(contact || "").trim(),
     applicationDate,
     description: description.trim(),

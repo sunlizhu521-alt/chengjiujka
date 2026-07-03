@@ -10,6 +10,7 @@ const dateInput = form.querySelector('input[name="applicationDate"]');
 const applicantNameInput = form.querySelector('input[name="applicantName"]');
 const rosterNameOptions = document.querySelector("#rosterNameOptions");
 const departmentSelect = form.querySelector('select[name="department"]');
+const positionInput = form.querySelector('input[name="position"]');
 const defaultDepartmentOptions = Array.from(departmentSelect.options)
   .filter((option) => option.value)
   .map((option) => option.value || option.textContent.trim());
@@ -333,7 +334,7 @@ function findRosterEmployeeByName(name) {
   return roster.employees.find((item) => item.name === applicantName) || null;
 }
 
-function applyRosterDepartmentForApplicant() {
+function applyRosterInfoForApplicant() {
   const applicantName = applicantNameInput.value.trim();
   if (!applicantName || !Array.isArray(roster.employees)) return;
 
@@ -344,6 +345,12 @@ function applyRosterDepartmentForApplicant() {
   if (canAutoFill) {
     departmentSelect.value = matched.department;
     departmentSelect.dataset.autoFilled = "true";
+  }
+
+  const canAutoFillPosition = !positionInput.value || positionInput.dataset.autoFilled === "true";
+  if (canAutoFillPosition && matched.position) {
+    positionInput.value = matched.position;
+    positionInput.dataset.autoFilled = "true";
   }
 }
 
@@ -361,7 +368,7 @@ async function loadRoster() {
     };
     renderDepartmentOptions(roster.departments);
     renderRosterNameOptions(roster.employees);
-    applyRosterDepartmentForApplicant();
+    applyRosterInfoForApplicant();
   } catch {
     renderDepartmentOptions();
     renderRosterNameOptions([]);
@@ -430,7 +437,7 @@ attachmentList.addEventListener("click", (event) => {
 });
 
 applicantNameInput.addEventListener("input", () => {
-  applyRosterDepartmentForApplicant();
+  applyRosterInfoForApplicant();
   clearTimeout(secretStatusTimer);
   secretStatusTimer = setTimeout(() => {
     refreshApplicantSecretStatus().catch(() => {
@@ -441,6 +448,10 @@ applicantNameInput.addEventListener("input", () => {
 
 departmentSelect.addEventListener("change", () => {
   departmentSelect.dataset.autoFilled = "";
+});
+
+positionInput.addEventListener("input", () => {
+  positionInput.dataset.autoFilled = "";
 });
 
 form.addEventListener("submit", async (event) => {
@@ -469,6 +480,10 @@ form.addEventListener("submit", async (event) => {
   if (rosterEmployee.department) {
     departmentSelect.value = rosterEmployee.department;
     departmentSelect.dataset.autoFilled = "true";
+  }
+  if (rosterEmployee.position) {
+    positionInput.value = rosterEmployee.position;
+    positionInput.dataset.autoFilled = "true";
   }
 
   try {
@@ -507,7 +522,7 @@ form.addEventListener("submit", async (event) => {
     form.reset();
     dateInput.valueAsDate = new Date();
     applyLoggedInApplicantName({ force: true });
-    applyRosterDepartmentForApplicant();
+    applyRosterInfoForApplicant();
     updateQuerySecretVisibility(false);
     refreshApplicantSecretStatus().catch(() => {});
     selectedFiles = [];
