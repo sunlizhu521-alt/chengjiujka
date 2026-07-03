@@ -24,6 +24,7 @@ const cardConfigFile = path.join(dataDir, "card-config.json");
 const rosterFile = path.join(dataDir, "roster.json");
 const coinRecordsFile = path.join(dataDir, "coin-records.json");
 const deletedUsersFile = path.join(dataDir, "deleted-users.json");
+const dingtalkConfigFile = path.join(dataDir, "dingtalk-config.json");
 
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
@@ -207,6 +208,69 @@ function normalizeOriginalName(name) {
   }
 
   return rawName;
+}
+
+function readDingTalkRuntimeConfig() {
+  const envWebhook = String(process.env.DINGTALK_WEBHOOK || "").trim();
+  const envSecret = String(process.env.DINGTALK_SECRET || "").trim();
+  if (envWebhook) {
+    return { webhook: envWebhook, secret: envSecret };
+  }
+
+  try {
+    if (!fs.existsSync(dingtalkConfigFile)) return { webhook: "", secret: "" };
+    const content = fs.readFileSync(dingtalkConfigFile, "utf8").replace(/^\uFEFF/, "");
+    const config = JSON.parse(content || "{}");
+    return {
+      webhook: String(config.webhook || "").trim(),
+      secret: String(config.secret || "").trim()
+    };
+  } catch {
+    return { webhook: "", secret: "" };
+  }
+}
+
+function dingtalkSignedUrl(webhook, secret) {
+  if (!secret) return webhook;
+  const timestamp = Date.now();
+  const signSource = `${timestamp}\n${secret}`;
+  const sign = crypto.createHmac("sha256", secret).update(signSource).digest("base64");
+  const separator = webhook.includes("?") ? "&" : "?";
+  return `${webhook}${separator}timestamp=${timestamp}&sign=${encodeURIComponent(sign)}`;
+}
+
+function dingtalkMarkdown(action, lines = []) {
+  const safeLines = lines.map((line) => String(line || "").trim()).filter(Boolean);
+  return [`### 成就卡系统提醒`, `**${action}**`, ...safeLines].join("\n\n");
+}
+
+async function sendDingTalkNotice(action, lines = []) {
+  const { webhook, secret } = readDingTalkRuntimeConfig();
+  if (!webhook) return;
+
+  const title = `成就卡系统提醒：${action}`;
+  const text = dingtalkMarkdown(action, lines);
+  const response = await fetch(dingtalkSignedUrl(webhook, secret), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      msgtype: "markdown",
+      markdown: { title, text }
+    })
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`钉钉通知发送失败：${response.status} ${body}`);
+  }
+}
+
+function notifyDingTalk(action, lines = []) {
+  setImmediate(() => {
+    sendDingTalkNotice(action, lines).catch((error) => {
+      console.error(error.message || "钉钉通知发送失败");
+    });
+  });
 }
 
 const storage = multer.diskStorage({
@@ -1152,6 +1216,7 @@ app.post("/api/auth/register", (req, res) => {
   users[name] = user;
   writeDeletedUsers(readDeletedUsers().filter((deletedName) => deletedName !== name));
   writeUsers(users);
+  notifyDingTalk("新用户注册", [`姓名：${user.name}`, `默认权限：申请页面、成就卡榜单`]);
   res.json({ user: publicUser(user), message: "注册成功，已开通申请页面和成就卡榜单。" });
 });
 
@@ -1177,6 +1242,11 @@ app.patch("/api/auth/users/:name/access", requireAdmin, (req, res) => {
   user.pageAccess = isAdminUser(user) ? pagePermissionKeys : requestedAccess;
   user.updatedAt = new Date().toISOString();
   writeUsers(users);
+  notifyDingTalk("用户权限已调整", [
+    `操作人：${req.authUser.name}`,
+    `对象：${user.name}`,
+    `授权页面：${normalizePageAccess(user).map((key) => (pagePermissions.find((page) => page.key === key) || {}).label || key).join("、") || "无"}`
+  ]);
   res.json({ user: publicUser(user), message: "用户权限已保存。" });
 });
 
@@ -1199,6 +1269,7 @@ app.post("/api/auth/users/:name/reset-secret", requireAdmin, (req, res) => {
   user.mustChangeSecret = true;
   user.updatedAt = new Date().toISOString();
   writeUsers(users);
+  notifyDingTalk("用户登录密码已重置", [`操作人：${req.authUser.name}`, `对象：${user.name}`]);
   res.json({ message: `秘钥已重置为 ${newSecret}，用户下次登录需重新设置。` });
 });
 
@@ -1220,6 +1291,7 @@ app.delete("/api/auth/users/:name", requireAdmin, (req, res) => {
   delete users[targetName];
   writeDeletedUsers([...readDeletedUsers(), targetName]);
   writeUsers(users);
+  notifyDingTalk("用户账号已删除", [`操作人：${req.authUser.name}`, `对象：${targetName}`]);
   res.json({
     message: "用户已删除。",
     users: publicPermissionUsers(users)
@@ -1255,6 +1327,7 @@ app.post("/api/auth/users/bulk-delete", requireAdmin, (req, res) => {
 
   writeDeletedUsers([...readDeletedUsers(), ...deletedNames]);
   writeUsers(users);
+  notifyDingTalk("批量删除用户账号", [`操作人：${req.authUser.name}`, `数量：${deletedNames.length}`, `对象：${deletedNames.join("、")}`]);
   res.json({
     message: `已删除 ${deletedNames.length} 个用户。`,
     deletedNames,
@@ -1356,6 +1429,13 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
 
   records.unshift(record);
   writeSubmissions(records);
+  notifyDingTalk("提交成就卡申请", [
+    `申报人：${record.applicantName}`,
+    `部门：${record.department}`,
+    `项目：${record.cardType}`,
+    `申报日期：${record.applicationDate}`,
+    `材料数量：${record.attachments.length}`
+  ]);
 
   res.status(201).json({
     id: record.id,
@@ -1581,6 +1661,13 @@ app.post("/api/coins", requireAdmin, (req, res) => {
   };
   records.unshift(record);
   writeCoinRecords(records);
+  notifyDingTalk("新增成就币记录", [
+    `操作人：${req.authUser.name}`,
+    `对象：${record.applicantName}`,
+    `类型：${coinRecordTypeLabels[record.type] || record.type}`,
+    `变动：${record.amount > 0 ? "+" : ""}${record.amount} 币`,
+    `日期：${record.recordDate}`
+  ]);
 
   res.json({
     message: "成就币记录已保存。",
@@ -1599,8 +1686,14 @@ app.delete("/api/coins/:id", requireAdmin, (req, res) => {
     return res.status(404).json({ message: "未找到成就币记录。" });
   }
 
-  records.splice(index, 1);
+  const [removedRecord] = records.splice(index, 1);
   writeCoinRecords(records);
+  notifyDingTalk("删除成就币记录", [
+    `操作人：${req.authUser.name}`,
+    `对象：${removedRecord.applicantName || ""}`,
+    `类型：${coinRecordTypeLabels[removedRecord.type] || removedRecord.type || "未填写"}`,
+    `变动：${removedRecord.amount > 0 ? "+" : ""}${removedRecord.amount || 0} 币`
+  ]);
   res.json({ message: "成就币记录已删除。", id: req.params.id });
 });
 
@@ -1650,6 +1743,13 @@ app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("r
   record.reviewSummary = finalReview;
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
+  notifyDingTalk("提交评审意见", [
+    `评审人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `项目：${record.cardType}`,
+    `本次意见：${reviewStatus}`,
+    `当前结果：${record.reviewStatus}`
+  ]);
 
   res.json(publicSubmissionForReview(record));
 });
@@ -1669,6 +1769,12 @@ app.post("/api/submissions/:id/feedback-files", requireAdmin, upload.array("feed
   record.feedbackFiles = [...(record.feedbackFiles || []), ...req.files.map(uploadedFileInfo)];
   record.feedbackUpdatedAt = new Date().toISOString();
   writeSubmissions(records);
+  notifyDingTalk("上传评审组反馈文件", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `项目：${record.cardType}`,
+    `本次上传：${req.files.length} 个`
+  ]);
   res.json(publicSubmissionForReview(record));
 });
 
@@ -1689,6 +1795,11 @@ app.patch("/api/submissions/:id/query-secret", requireAdmin, (req, res) => {
   record.querySecretResetAt = new Date().toISOString();
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
+  notifyDingTalk("重置查询秘钥", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `项目：${record.cardType}`
+  ]);
   res.json({ message: "查询秘钥已重置。", record: publicSubmissionForReview(record) });
 });
 
@@ -1712,6 +1823,12 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   record.resultPublishedBy = resultPublished ? req.authUser.name : "";
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
+  notifyDingTalk(resultPublished ? "确认展示评审结果" : "取消展示评审结果", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `项目：${record.cardType}`,
+    `评审结果：${record.reviewStatus || "待评审"}`
+  ]);
 
   res.json(publicSubmissionForReview(record));
 });
@@ -1730,6 +1847,12 @@ app.delete("/api/submissions/:id", requireAdmin, (req, res) => {
   const [removedRecord] = records.splice(recordIndex, 1);
   removeUploadedFiles([...(removedRecord.attachments || []), ...(removedRecord.feedbackFiles || [])]);
   writeSubmissions(records);
+  notifyDingTalk("删除申请记录", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${removedRecord.applicantName}`,
+    `项目：${removedRecord.cardType}`,
+    `状态：${removedRecord.reviewStatus || "待评审"}`
+  ]);
   res.json({ message: "申请记录已删除。", id: req.params.id });
 });
 

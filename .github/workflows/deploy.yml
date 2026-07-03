@@ -12,6 +12,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy to server
+        env:
+          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+          DINGTALK_SECRET: ${{ secrets.DINGTALK_SECRET }}
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -19,7 +22,19 @@ jobs:
 
           tar --exclude='.git' --exclude='node_modules' --exclude='data' --exclude='uploads' -czf /tmp/chengjiujka.tar.gz .
 
+          node - <<'NODE'
+          const fs = require('fs');
+          const webhook = process.env.DINGTALK_WEBHOOK || '';
+          const secret = process.env.DINGTALK_SECRET || '';
+          if (webhook) {
+            fs.writeFileSync('/tmp/dingtalk-config.json', JSON.stringify({ webhook, secret }), 'utf8');
+          }
+          NODE
+
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no /tmp/chengjiujka.tar.gz ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/
+          if [ -f /tmp/dingtalk-config.json ]; then
+            scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no /tmp/dingtalk-config.json ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/
+          fi
 
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'REMOTE'
             set -e
@@ -31,6 +46,11 @@ jobs:
               ls -lh ~/backups/$PROJECT_NAME | tail -n 5
             fi
             tar -xzf /tmp/chengjiujka.tar.gz
+            if [ -f /tmp/dingtalk-config.json ]; then
+              mkdir -p data
+              mv /tmp/dingtalk-config.json data/dingtalk-config.json
+              chmod 600 data/dingtalk-config.json
+            fi
             npm install --production
             pm2 restart chengjiujka
             pm2 save
