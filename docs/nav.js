@@ -35,6 +35,7 @@ function normalizedNavAccess(user) {
   if (user.role === "admin" || user.name === "孙立柱") {
     return [
       "applicationPage",
+      "passed",
       "reviewPage",
       "permissionManagement",
       "resultSummary",

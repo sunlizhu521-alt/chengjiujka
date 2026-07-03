@@ -8,10 +8,13 @@ let cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
 const reviewMembers = ["孙立柱", "王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const pageLabels = {
   applicationPage: "申请页面",
+  passed: "成就卡榜单",
   reviewPage: "评审页面",
   permissionManagement: "权限管理",
   resultSummary: "结果汇总",
-  infoConfig: "信息配置"
+  infoConfig: "信息配置",
+  fileMaintenance: "文件维护",
+  coinManagement: "成就币管理"
 };
 let permissionPages = Object.entries(pageLabels).map(([key, label]) => ({ key, label }));
 let permissionUsers = [];

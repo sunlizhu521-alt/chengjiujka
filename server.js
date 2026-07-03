@@ -31,6 +31,7 @@ const reviewStatuses = new Set(["通过", "不通过"]);
 const userRoleName = "user";
 const pagePermissions = [
   { key: "applicationPage", label: "申请页面" },
+  { key: "passed", label: "成就卡榜单" },
   { key: "reviewPage", label: "评审页面" },
   { key: "permissionManagement", label: "权限管理" },
   { key: "resultSummary", label: "结果汇总" },
@@ -45,6 +46,7 @@ const legacyPageKeyMap = {
   cardConfig: "infoConfig"
 };
 const defaultReviewerAccess = ["applicationPage", "reviewPage"];
+const defaultApplicantAccess = ["applicationPage", "passed"];
 
 function loadDefaultCardDetails() {
   const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
@@ -265,9 +267,10 @@ function normalizePageAccess(user) {
     ? user.pageAccess
     : user.role === "reviewer"
       ? defaultReviewerAccess
-      : [];
+      : defaultApplicantAccess;
   const normalized = source.map((key) => legacyPageKeyMap[key] || key);
-  return [...new Set(normalized.filter((key) => pagePermissionKeys.includes(key)))];
+  const withRoleDefaults = user.role === userRoleName ? [...defaultApplicantAccess, ...normalized] : normalized;
+  return [...new Set(withRoleDefaults.filter((key) => pagePermissionKeys.includes(key)))];
 }
 
 function hasPageAccess(user, ...pages) {
@@ -323,6 +326,35 @@ function defaultUsers() {
   };
 }
 
+function addSubmissionApplicantsToUsers(users) {
+  if (!fs.existsSync(submissionsFile)) return false;
+
+  let changed = false;
+  try {
+    const content = fs.readFileSync(submissionsFile, "utf8").replace(/^\uFEFF/, "");
+    const records = JSON.parse(content || "[]");
+    records.forEach((record) => {
+      const name = String(record.applicantName || "").trim();
+      if (!name || users[name]) return;
+      users[name] = {
+        id: createUserId(),
+        name,
+        role: userRoleName,
+        pageAccess: defaultApplicantAccess,
+        secretHash: "",
+        mustChangeSecret: false,
+        createdAt: record.submittedAt || new Date().toISOString(),
+        source: "submission"
+      };
+      changed = true;
+    });
+  } catch {
+    return changed;
+  }
+
+  return changed;
+}
+
 function readUsers() {
   let users = {};
   if (fs.existsSync(usersFile)) {
@@ -356,6 +388,10 @@ function readUsers() {
       changed = true;
     }
   });
+
+  if (addSubmissionApplicantsToUsers(users)) {
+    changed = true;
+  }
 
   Object.entries(users).forEach(([name, user]) => {
     if (!user.name) {
@@ -1065,14 +1101,14 @@ app.post("/api/auth/register", (req, res) => {
     id: createUserId(),
     name,
     role: userRoleName,
-    pageAccess: [],
+    pageAccess: defaultApplicantAccess,
     secretHash: hashSecret(secret),
     mustChangeSecret: false,
     createdAt: new Date().toISOString()
   };
   users[name] = user;
   writeUsers(users);
-  res.json({ user: publicUser(user), message: "注册成功，请等待管理员孙立柱授权页面权限。" });
+  res.json({ user: publicUser(user), message: "注册成功，已开通申请页面和成就卡榜单。" });
 });
 
 app.get("/api/auth/users", requireAdmin, (req, res) => {
