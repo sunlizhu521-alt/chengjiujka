@@ -1840,61 +1840,71 @@ small {
 }
 
 .permission-list {
-  display: grid;
-  gap: 10px;
+  display: block;
 }
 
-.permission-card {
-  display: grid;
-  gap: 10px;
+.permission-table-wrap {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  padding: 12px;
-  box-shadow: none;
+  overflow: auto;
 }
 
-.permission-card.is-protected {
+.permission-table {
+  min-width: 980px;
+}
+
+.permission-table th,
+.permission-table td {
+  border-right: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.permission-table th:last-child,
+.permission-table td:last-child {
+  border-right: 0;
+}
+
+.permission-table th {
+  text-align: center;
+}
+
+.permission-table td:first-child,
+.permission-table td:nth-child(2) {
+  width: 140px;
+  text-align: center;
+  font-weight: 700;
+  color: #30305b;
+}
+
+.permission-table td:last-child {
+  width: 190px;
+}
+
+.permission-table tr.is-protected {
   background: #fbfbff;
 }
 
-.permission-user-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.permission-user-head strong {
-  display: block;
-  color: #1f2147;
-  font-size: 16px;
-}
-
-.permission-user-head span,
-.permission-user-head small,
 .empty-text {
   color: var(--muted);
 }
 
 .permission-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 6px 34px;
 }
 
 .permission-checkbox {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #fbfbff;
-  padding: 0 9px;
+  min-height: 26px;
+  padding: 0;
   color: #30305b;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .permission-checkbox input {
@@ -1905,14 +1915,14 @@ small {
 .permission-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   gap: 6px;
 }
 
 .permission-actions button {
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 12px;
   font-size: 13px;
 }
 

@@ -340,23 +340,25 @@ function renderPermissionPanel() {
     return;
   }
 
-  permissionList.innerHTML = permissionUsers
+  const rows = permissionUsers
     .map((user) => {
       const isBuiltInAdmin = isAdminUser(user);
       const canDeleteUser = isRootAdminUser() && user.name !== "孙立柱";
       const access = new Set(user.pageAccess || []);
       const options = permissionPages
-        .map((page) => `
-          <label class="permission-checkbox">
-            <input
-              type="checkbox"
-              value="${escapeHtml(page.key)}"
-              ${access.has(page.key) ? "checked" : ""}
-              ${isBuiltInAdmin ? "disabled" : ""}
-            />
-            <span>${escapeHtml(page.label)}</span>
-          </label>
-        `)
+        .map(
+          (page) => `
+            <label class="permission-checkbox">
+              <input
+                type="checkbox"
+                value="${escapeHtml(page.key)}"
+                ${access.has(page.key) ? "checked" : ""}
+                ${isBuiltInAdmin ? "disabled" : ""}
+              />
+              <span>${escapeHtml(page.label)}</span>
+            </label>
+          `
+        )
         .join("");
       const roleLabel = isBuiltInAdmin ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户";
       const deleteButton = canDeleteUser
@@ -364,24 +366,39 @@ function renderPermissionPanel() {
         : "";
 
       return `
-        <article class="permission-card ${isBuiltInAdmin ? "is-protected" : ""}" data-user-name="${escapeHtml(user.name)}">
-          <div class="permission-user-head">
-            <div>
-              <strong>${escapeHtml(user.name)}</strong>
-              <span>${escapeHtml(roleLabel)}</span>
-            </div>
+        <tr class="${isBuiltInAdmin ? "is-protected" : ""}" data-user-name="${escapeHtml(user.name)}">
+          <td data-label="姓名">${escapeHtml(user.name)}</td>
+          <td data-label="角色">${escapeHtml(roleLabel)}</td>
+          <td data-label="页面权限">
+            <div class="permission-checkbox-grid">${options}</div>
+          </td>
+          <td data-label="操作">
             <div class="permission-actions">
-              <small>${access.size ? `已授权 ${access.size} 项` : "待授权"}</small>
-              <button type="button" class="save-user-access-btn" ${isBuiltInAdmin ? "disabled" : ""}>保存</button>
-              <button type="button" class="reset-user-secret-btn secondary-button" ${isBuiltInAdmin ? "disabled" : ""}>重置秘钥</button>
+              <button type="button" class="save-user-access-btn" ${isBuiltInAdmin ? "disabled" : ""}>授权</button>
+              <button type="button" class="reset-user-secret-btn secondary-button" ${isBuiltInAdmin ? "disabled" : ""}>重置密码</button>
               ${deleteButton}
             </div>
-          </div>
-          <div class="permission-checkbox-grid">${options}</div>
-        </article>
+          </td>
+        </tr>
       `;
     })
     .join("");
+
+  permissionList.innerHTML = `
+    <div class="table-wrap permission-table-wrap">
+      <table class="summary-table permission-table">
+        <thead>
+          <tr>
+            <th>姓名</th>
+            <th>角色</th>
+            <th>页面权限</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 async function loadPermissionUsers() {
@@ -1087,14 +1104,14 @@ loadUsersBtn.addEventListener("click", loadPermissionUsers);
 window.addEventListener("hashchange", applyAdminModule);
 
 permissionList.addEventListener("click", async (event) => {
-  const card = event.target.closest(".permission-card");
-  if (!card) return;
-  const userName = card.dataset.userName;
+  const row = event.target.closest("[data-user-name]");
+  if (!row || !permissionList.contains(row)) return;
+  const userName = row.dataset.userName;
   if (!userName) return;
 
   try {
     if (event.target.closest(".save-user-access-btn")) {
-      const pageAccess = Array.from(card.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
+      const pageAccess = Array.from(row.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
       const response = await fetch(apiUrl(`/api/auth/users/${encodeURIComponent(userName)}/access`), {
         method: "PATCH",
         headers: authHeaders({ "content-type": "application/json" }),
