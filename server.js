@@ -239,16 +239,50 @@ function dingtalkSignedUrl(webhook, secret) {
   return `${webhook}${separator}timestamp=${timestamp}&sign=${encodeURIComponent(sign)}`;
 }
 
+function dingtalkActor(lines = []) {
+  const actorLabels = ["操作人", "评审人", "申报人", "姓名"];
+  for (const label of actorLabels) {
+    const line = lines.find((item) => String(item || "").trim().startsWith(`${label}：`));
+    if (line) return String(line).split("：").slice(1).join("：").trim();
+  }
+  return "系统";
+}
+
+function dingtalkActionText(action) {
+  const actionTextMap = {
+    新用户注册: "注册了账号",
+    用户权限已调整: "调整了用户权限",
+    用户登录密码已重置: "重置了用户登录密码",
+    用户账号已删除: "删除了用户账号",
+    批量删除用户账号: "批量删除了用户账号",
+    提交成就卡申请: "提交了成就卡申请",
+    新增成就币记录: "新增了成就币记录",
+    删除成就币记录: "删除了成就币记录",
+    提交评审意见: "提交了评审意见",
+    上传评审组反馈文件: "上传了评审组反馈文件",
+    重置查询秘钥: "重置了查询秘钥",
+    确认展示评审结果: "确认展示了评审结果",
+    取消展示评审结果: "取消展示了评审结果",
+    批量删除申请记录: "批量删除了申请记录",
+    删除申请记录: "删除了申请记录"
+  };
+  return actionTextMap[action] || action;
+}
+
+function dingtalkSummary(action, lines = []) {
+  return `${dingtalkActor(lines)} ${dingtalkActionText(action)}`;
+}
+
 function dingtalkMarkdown(action, lines = []) {
   const safeLines = lines.map((line) => String(line || "").trim()).filter(Boolean);
-  return [`### 成就卡系统提醒`, `**${action}**`, ...safeLines].join("\n\n");
+  return [`### 成就卡系统提醒`, `**${dingtalkSummary(action, safeLines)}**`, ...safeLines].join("\n\n");
 }
 
 async function sendDingTalkNotice(action, lines = []) {
   const { webhook, secret } = readDingTalkRuntimeConfig();
   if (!webhook) return;
 
-  const title = `成就卡系统提醒：${action}`;
+  const title = `成就卡系统提醒：${dingtalkSummary(action, lines)}`;
   const text = dingtalkMarkdown(action, lines);
   const response = await fetch(dingtalkSignedUrl(webhook, secret), {
     method: "POST",
