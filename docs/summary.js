@@ -73,10 +73,6 @@ function formatDate(value) {
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
 
-function shortId(value) {
-  return String(value || "").slice(0, 8);
-}
-
 function materialSummary(item) {
   const files = item.attachments || [];
   if (!files.length) return "无";
@@ -183,7 +179,7 @@ function renderTable() {
             <input class="summary-record-checkbox" type="checkbox" data-id="${escapeHtml(item.id)}" aria-label="选择 ${escapeHtml(item.applicantName)} ${escapeHtml(item.cardType)}" ${checked} ${disabled} />
           </td>
           <td data-label="序号">${index + 1}</td>
-          <td data-label="申请编号">${escapeHtml(shortId(item.id))}</td>
+          <td data-label="申请编号">${escapeHtml(item.id || "")}</td>
           <td data-label="申报人">${escapeHtml(item.applicantName)}</td>
           <td data-label="部门">${escapeHtml(item.department)}</td>
           <td data-label="岗位">${escapeHtml(item.position)}</td>

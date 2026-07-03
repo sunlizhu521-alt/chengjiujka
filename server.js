@@ -658,6 +658,28 @@ function createImportId(prefix, parts) {
   return `${prefix}-${crypto.createHash("sha1").update(source).digest("hex").slice(0, 18)}`;
 }
 
+function compactChinaDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const valueByType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${valueByType.year}${valueByType.month}${valueByType.day}`;
+}
+
+function createSubmissionId(records, date = new Date()) {
+  const prefix = compactChinaDate(date);
+  const maxSequence = records.reduce((max, record) => {
+    const id = String(record.id || "");
+    const match = id.match(new RegExp(`^${prefix}(\\d+)$`));
+    if (!match) return max;
+    return Math.max(max, Number(match[1] || 0));
+  }, 0);
+  return `${prefix}${String(maxSequence + 1).padStart(3, "0")}`;
+}
+
 function importReviewStatus(row = {}) {
   const status = normalizeImportText(row["通过情况"] || row["二次评审结果"] || row.reviewStatus);
   if (status.includes("不通过") || status.includes("驳回")) return "不通过";
@@ -1398,9 +1420,10 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     ? normalizedQuerySecret
     : previousSecretRecord.querySecretPlain || "";
 
-  const now = new Date().toISOString();
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
   const record = {
-    id: crypto.randomUUID(),
+    id: createSubmissionId(records, nowDate),
     cardType,
     applicantName: normalizedApplicantName,
     department: department.trim(),
@@ -1430,6 +1453,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
   records.unshift(record);
   writeSubmissions(records);
   notifyDingTalk("提交成就卡申请", [
+    `申请编号：${record.id}`,
     `申报人：${record.applicantName}`,
     `部门：${record.department}`,
     `项目：${record.cardType}`,

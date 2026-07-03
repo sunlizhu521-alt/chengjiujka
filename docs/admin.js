@@ -705,6 +705,7 @@ function renderRecords() {
       <div class="record-head">
         <div>
           <h3 class="record-title">${escapeHtml(item.cardType)} - ${escapeHtml(item.applicantName)}</h3>
+          <p>申请编号：${escapeHtml(item.id || "")}</p>
           <p>提交时间：${escapeHtml(formatDate(item.submittedAt))}</p>
         </div>
         <span class="${badgeClass(currentStatus)}">${escapeHtml(currentStatus)}</span>
