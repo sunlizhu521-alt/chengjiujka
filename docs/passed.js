@@ -5,6 +5,7 @@ const passedKeyword = document.querySelector("#passedKeyword");
 const passedDepartmentFilter = document.querySelector("#passedDepartmentFilter");
 const passedCardFilter = document.querySelector("#passedCardFilter");
 const passedValidityFilter = document.querySelector("#passedValidityFilter");
+const passedEmploymentFilter = document.querySelector("#passedEmploymentFilter");
 const passedCardCountMin = document.querySelector("#passedCardCountMin");
 const passedScoreMin = document.querySelector("#passedScoreMin");
 const passedApplyBtn = document.querySelector("#passedApplyBtn");
@@ -23,6 +24,7 @@ let activePassedFilters = {
   department: "",
   cardType: "",
   validity: "",
+  employmentStatus: "",
   cardCountMin: "",
   scoreMin: ""
 };
@@ -89,13 +91,14 @@ function readPassedFilters() {
     department: passedDepartmentFilter.value,
     cardType: passedCardFilter.value,
     validity: passedValidityFilter.value,
+    employmentStatus: passedEmploymentFilter.value,
     cardCountMin: passedCardCountMin.value.trim(),
     scoreMin: passedScoreMin.value.trim()
   };
 }
 
 function matchesBaseFilters(item) {
-  const { keyword, department, cardType, validity } = activePassedFilters;
+  const { keyword, department, cardType, validity, employmentStatus } = activePassedFilters;
   const haystack = [
     item.applicantName,
     item.department,
@@ -113,7 +116,8 @@ function matchesBaseFilters(item) {
     (!keyword || haystack.includes(keyword)) &&
     (!department || item.department === department) &&
     (!cardType || item.cardType === cardType) &&
-    (!validity || item.validity === validity)
+    (!validity || item.validity === validity) &&
+    (!employmentStatus || item.employmentStatus === employmentStatus)
   );
 }
 
@@ -268,6 +272,7 @@ passedResetBtn.addEventListener("click", () => {
   passedDepartmentFilter.value = "";
   passedCardFilter.value = "";
   passedValidityFilter.value = "";
+  passedEmploymentFilter.value = "";
   passedCardCountMin.value = "";
   passedScoreMin.value = "";
   activePassedFilters = readPassedFilters();
