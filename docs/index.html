@@ -31,7 +31,8 @@
         <div class="grid">
           <label class="field">
             <span>申报人姓名 <b>*</b></span>
-            <input name="applicantName" autocomplete="name" required />
+            <input name="applicantName" list="rosterNameOptions" autocomplete="name" required />
+            <datalist id="rosterNameOptions"></datalist>
           </label>
           <label class="field">
             <span>所属部门 <b>*</b></span>
@@ -126,6 +127,6 @@
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./card-data.js?v=20260611-24" defer></script>
     <script src="./nav.js?v=20260703-04" defer></script>
-    <script src="./app.js?v=20260702-02" defer></script>
+    <script src="./app.js?v=20260703-01" defer></script>
   </body>
 </html>

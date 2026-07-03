@@ -621,6 +621,12 @@ function readRoster() {
   };
 }
 
+function findRosterEmployee(name) {
+  const applicantName = normalizeRosterText(name);
+  if (!applicantName) return null;
+  return readRoster().employees.find((employee) => employee.name === applicantName) || null;
+}
+
 function writeRoster(roster) {
   const normalized = {
     updatedAt: roster.updatedAt || new Date().toISOString(),
@@ -1392,6 +1398,12 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
 
   const records = readSubmissions();
   const normalizedApplicantName = applicantName.trim();
+  const rosterEmployee = findRosterEmployee(normalizedApplicantName);
+  if (!rosterEmployee) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "申报人姓名不在花名册内，不能提交申请。请确认姓名与花名册一致。" });
+  }
+
   const normalizedQuerySecret = String(querySecret || "").trim();
   const previousSecretRecord = records.find(
     (record) => record.applicantName === normalizedApplicantName && record.querySecretHash
@@ -1426,7 +1438,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     id: createSubmissionId(records, nowDate),
     cardType,
     applicantName: normalizedApplicantName,
-    department: department.trim(),
+    department: rosterEmployee.department || department.trim(),
     position: position.trim(),
     contact: String(contact || "").trim(),
     applicationDate,

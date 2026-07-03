@@ -8,6 +8,7 @@ const resultQueryForm = document.querySelector("#resultQueryForm");
 const queryResult = document.querySelector("#queryResult");
 const dateInput = form.querySelector('input[name="applicationDate"]');
 const applicantNameInput = form.querySelector('input[name="applicantName"]');
+const rosterNameOptions = document.querySelector("#rosterNameOptions");
 const departmentSelect = form.querySelector('select[name="department"]');
 const defaultDepartmentOptions = Array.from(departmentSelect.options)
   .filter((option) => option.value)
@@ -319,11 +320,24 @@ function renderDepartmentOptions(departments = []) {
   }
 }
 
+function renderRosterNameOptions(employees = []) {
+  if (!rosterNameOptions) return;
+  rosterNameOptions.innerHTML = employees
+    .map((employee) => `<option value="${escapeHtml(employee.name || "")}"></option>`)
+    .join("");
+}
+
+function findRosterEmployeeByName(name) {
+  const applicantName = String(name || "").trim();
+  if (!applicantName || !Array.isArray(roster.employees)) return null;
+  return roster.employees.find((item) => item.name === applicantName) || null;
+}
+
 function applyRosterDepartmentForApplicant() {
   const applicantName = applicantNameInput.value.trim();
   if (!applicantName || !Array.isArray(roster.employees)) return;
 
-  const matched = roster.employees.find((item) => item.name === applicantName);
+  const matched = findRosterEmployeeByName(applicantName);
   if (!matched || !matched.department) return;
 
   const canAutoFill = !departmentSelect.value || departmentSelect.dataset.autoFilled === "true";
@@ -346,9 +360,11 @@ async function loadRoster() {
       employees: Array.isArray(result.employees) ? result.employees : []
     };
     renderDepartmentOptions(roster.departments);
+    renderRosterNameOptions(roster.employees);
     applyRosterDepartmentForApplicant();
   } catch {
     renderDepartmentOptions();
+    renderRosterNameOptions([]);
   }
 }
 
@@ -442,6 +458,17 @@ form.addEventListener("submit", async (event) => {
   if (!hasBackend()) {
     setMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
     return;
+  }
+
+  const rosterEmployee = findRosterEmployeeByName(applicantNameInput.value);
+  if (!rosterEmployee) {
+    setMessage("申报人姓名不在花名册内，不能提交申请。请确认姓名与花名册一致。", "error");
+    applicantNameInput.focus();
+    return;
+  }
+  if (rosterEmployee.department) {
+    departmentSelect.value = rosterEmployee.department;
+    departmentSelect.dataset.autoFilled = "true";
   }
 
   try {
