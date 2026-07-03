@@ -55,6 +55,7 @@ const rosterImportMessage = document.querySelector("#rosterImportMessage");
 const permissionPanel = document.querySelector("#permissionPanel");
 const permissionList = document.querySelector("#permissionList");
 const loadUsersBtn = document.querySelector("#loadUsersBtn");
+const bulkDeleteUsersBtn = document.querySelector("#bulkDeleteUsersBtn");
 const permissionMessage = document.querySelector("#permissionMessage");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
@@ -364,14 +365,21 @@ function renderPermissionPanel() {
         )
         .join("");
       const roleLabel = isBuiltInAdmin ? "管理员" : user.role === "reviewer" ? "评审人" : "普通用户";
+      const stats = user.stats || { submitted: 0, passed: 0 };
       const deleteButton = canDeleteUser
         ? '<button type="button" class="delete-user-btn danger-button">删除</button>'
         : "";
 
       return `
         <tr class="${isBuiltInAdmin ? "is-protected" : ""}" data-user-name="${escapeHtml(user.name)}">
+          <td data-label="选择">
+            <input class="permission-user-select" type="checkbox" value="${escapeHtml(user.name)}" ${canDeleteUser ? "" : "disabled"} />
+          </td>
           <td data-label="姓名">${escapeHtml(user.name)}</td>
           <td data-label="角色">${escapeHtml(roleLabel)}</td>
+          <td data-label="系统信息">
+            <span class="permission-stats">提交 ${escapeHtml(stats.submitted || 0)} 个 / 通过 ${escapeHtml(stats.passed || 0)} 个</span>
+          </td>
           <td data-label="页面权限">
             <div class="permission-checkbox-grid">${options}</div>
           </td>
@@ -392,8 +400,10 @@ function renderPermissionPanel() {
       <table class="summary-table permission-table">
         <thead>
           <tr>
+            <th><input id="permissionSelectAll" type="checkbox" aria-label="全选用户" /></th>
             <th>姓名</th>
             <th>角色</th>
+            <th>系统信息</th>
             <th>页面权限</th>
             <th>操作</th>
           </tr>
@@ -402,6 +412,16 @@ function renderPermissionPanel() {
       </table>
     </div>
   `;
+  updateBulkDeleteButton();
+}
+
+function selectedPermissionUserNames() {
+  return Array.from(permissionList.querySelectorAll(".permission-user-select:checked")).map((input) => input.value);
+}
+
+function updateBulkDeleteButton() {
+  if (!bulkDeleteUsersBtn) return;
+  bulkDeleteUsersBtn.disabled = selectedPermissionUserNames().length === 0;
 }
 
 async function loadPermissionUsers() {
@@ -1104,7 +1124,51 @@ nextRecordBtn.addEventListener("click", () => {
 
 logoutBtn.addEventListener("click", showLogin);
 loadUsersBtn.addEventListener("click", loadPermissionUsers);
+bulkDeleteUsersBtn.addEventListener("click", async () => {
+  const names = selectedPermissionUserNames();
+  if (names.length === 0) return;
+  if (!window.confirm(`确认批量删除 ${names.length} 个用户？`)) return;
+
+  bulkDeleteUsersBtn.disabled = true;
+  try {
+    const response = await fetch(apiUrl("/api/auth/users/bulk-delete"), {
+      method: "POST",
+      headers: authHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ names })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "批量删除失败");
+    permissionUsers = result.users || permissionUsers.filter((user) => !names.includes(user.name));
+    renderPermissionPanel();
+    applyAdminModule();
+    setPermissionMessage(result.message || "批量删除完成。", "success");
+  } catch (error) {
+    setPermissionMessage(error.message, "error");
+    updateBulkDeleteButton();
+  }
+});
 window.addEventListener("hashchange", applyAdminModule);
+
+permissionList.addEventListener("change", (event) => {
+  if (event.target.id === "permissionSelectAll") {
+    const checked = event.target.checked;
+    permissionList.querySelectorAll(".permission-user-select:not(:disabled)").forEach((input) => {
+      input.checked = checked;
+    });
+    updateBulkDeleteButton();
+    return;
+  }
+
+  if (event.target.classList.contains("permission-user-select")) {
+    const selectAll = permissionList.querySelector("#permissionSelectAll");
+    const selectable = Array.from(permissionList.querySelectorAll(".permission-user-select:not(:disabled)"));
+    if (selectAll) {
+      selectAll.checked = selectable.length > 0 && selectable.every((input) => input.checked);
+      selectAll.indeterminate = selectable.some((input) => input.checked) && !selectAll.checked;
+    }
+    updateBulkDeleteButton();
+  }
+});
 
 permissionList.addEventListener("click", async (event) => {
   const row = event.target.closest("[data-user-name]");
@@ -1114,7 +1178,9 @@ permissionList.addEventListener("click", async (event) => {
 
   try {
     if (event.target.closest(".save-user-access-btn")) {
-      const pageAccess = Array.from(row.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
+      const pageAccess = Array.from(row.querySelectorAll('.permission-checkbox-grid input[type="checkbox"]:checked')).map(
+        (input) => input.value
+      );
       const response = await fetch(apiUrl(`/api/auth/users/${encodeURIComponent(userName)}/access`), {
         method: "PATCH",
         headers: authHeaders({ "content-type": "application/json" }),

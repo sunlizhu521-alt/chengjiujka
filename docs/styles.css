@@ -1851,7 +1851,7 @@ small {
 }
 
 .permission-table {
-  min-width: 980px;
+  min-width: 1200px;
 }
 
 .permission-table th,
@@ -1869,12 +1869,23 @@ small {
   text-align: center;
 }
 
-.permission-table td:first-child,
-.permission-table td:nth-child(2) {
-  width: 140px;
+.permission-table td:first-child {
+  width: 58px;
+  text-align: center;
+}
+
+.permission-table td:nth-child(2),
+.permission-table td:nth-child(3) {
+  width: 130px;
   text-align: center;
   font-weight: 700;
   color: #30305b;
+}
+
+.permission-table td:nth-child(4) {
+  width: 170px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .permission-table td:last-child {
@@ -1911,6 +1922,22 @@ small {
 .permission-checkbox input {
   width: 14px;
   min-height: 14px;
+}
+
+.permission-stats {
+  color: #30305b;
+  font-weight: 700;
+}
+
+.permission-toolbar-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.permission-toolbar-actions button {
+  white-space: nowrap;
 }
 
 .permission-actions {

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡评审台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260703-06" />
+    <link rel="stylesheet" href="./styles.css?v=20260703-07" />
   </head>
   <body>
     <header class="topbar nav-only">
@@ -129,7 +129,10 @@
               <h2>权限管理</h2>
               <p>注册用户默认无页面权限，需孙立柱授权后才能登录系统。</p>
             </div>
-            <button id="loadUsersBtn" type="button">刷新用户</button>
+            <div class="permission-toolbar-actions">
+              <button id="loadUsersBtn" type="button">刷新用户</button>
+              <button id="bulkDeleteUsersBtn" type="button" class="danger-button" disabled>批量删除</button>
+            </div>
           </div>
           <div id="permissionList" class="permission-list"></div>
           <p id="permissionMessage" class="message" role="status"></p>
@@ -145,6 +148,6 @@
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./card-data.js?v=20260611-23" defer></script>
     <script src="./nav.js?v=20260703-04" defer></script>
-    <script src="./admin.js?v=20260703-04" defer></script>
+    <script src="./admin.js?v=20260703-07" defer></script>
   </body>
 </html>

@@ -23,6 +23,7 @@ const usersFile = path.join(dataDir, "users.json");
 const cardConfigFile = path.join(dataDir, "card-config.json");
 const rosterFile = path.join(dataDir, "roster.json");
 const coinRecordsFile = path.join(dataDir, "coin-records.json");
+const deletedUsersFile = path.join(dataDir, "deleted-users.json");
 
 const adminName = "孙立柱";
 const reviewerNames = ["王斌", "惠李伟", "蒋炳兰", "任蒨"];
@@ -326,6 +327,21 @@ function defaultUsers() {
   };
 }
 
+function readDeletedUsers() {
+  if (!fs.existsSync(deletedUsersFile)) return [];
+  try {
+    const content = fs.readFileSync(deletedUsersFile, "utf8").replace(/^\uFEFF/, "");
+    const names = JSON.parse(content || "[]");
+    return Array.isArray(names) ? names : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDeletedUsers(names) {
+  writeJsonAtomic(deletedUsersFile, [...new Set(names.map((name) => String(name || "").trim()).filter(Boolean))]);
+}
+
 function addSubmissionApplicantsToUsers(users) {
   if (!fs.existsSync(submissionsFile)) return false;
 
@@ -333,9 +349,10 @@ function addSubmissionApplicantsToUsers(users) {
   try {
     const content = fs.readFileSync(submissionsFile, "utf8").replace(/^\uFEFF/, "");
     const records = JSON.parse(content || "[]");
+    const deletedUsers = new Set(readDeletedUsers());
     records.forEach((record) => {
       const name = String(record.applicantName || "").trim();
-      if (!name || users[name]) return;
+      if (!name || users[name] || deletedUsers.has(name)) return;
       users[name] = {
         id: createUserId(),
         name,
@@ -353,6 +370,32 @@ function addSubmissionApplicantsToUsers(users) {
   }
 
   return changed;
+}
+
+function buildUserStats(submissions = readSubmissions()) {
+  return submissions.reduce((stats, record) => {
+    const name = String(record.applicantName || "").trim();
+    if (!name) return stats;
+    const current = stats.get(name) || { submitted: 0, passed: 0 };
+    current.submitted += 1;
+    if (record.reviewStatus === "通过") current.passed += 1;
+    stats.set(name, current);
+    return stats;
+  }, new Map());
+}
+
+function publicPermissionUsers(users, submissions = readSubmissions()) {
+  const stats = buildUserStats(submissions);
+  return Object.values(users).map((user) => ({
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    pageAccess: normalizePageAccess(user),
+    mustChangeSecret: Boolean(user.mustChangeSecret),
+    createdAt: user.createdAt || "",
+    updatedAt: user.updatedAt || "",
+    stats: stats.get(user.name) || { submitted: 0, passed: 0 }
+  }));
 }
 
 function readUsers() {
@@ -1107,6 +1150,7 @@ app.post("/api/auth/register", (req, res) => {
     createdAt: new Date().toISOString()
   };
   users[name] = user;
+  writeDeletedUsers(readDeletedUsers().filter((deletedName) => deletedName !== name));
   writeUsers(users);
   res.json({ user: publicUser(user), message: "注册成功，已开通申请页面和成就卡榜单。" });
 });
@@ -1115,15 +1159,7 @@ app.get("/api/auth/users", requireAdmin, (req, res) => {
   const users = readUsers();
   res.json({
     pages: pagePermissions,
-    users: Object.values(users).map((user) => ({
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      pageAccess: normalizePageAccess(user),
-      mustChangeSecret: Boolean(user.mustChangeSecret),
-      createdAt: user.createdAt || "",
-      updatedAt: user.updatedAt || ""
-    }))
+    users: publicPermissionUsers(users)
   });
 });
 
@@ -1182,18 +1218,47 @@ app.delete("/api/auth/users/:name", requireAdmin, (req, res) => {
   }
 
   delete users[targetName];
+  writeDeletedUsers([...readDeletedUsers(), targetName]);
   writeUsers(users);
   res.json({
     message: "用户已删除。",
-    users: Object.values(users).map((item) => ({
-      id: item.id,
-      name: item.name,
-      role: item.role,
-      pageAccess: normalizePageAccess(item),
-      mustChangeSecret: Boolean(item.mustChangeSecret),
-      createdAt: item.createdAt || "",
-      updatedAt: item.updatedAt || ""
-    }))
+    users: publicPermissionUsers(users)
+  });
+});
+
+app.post("/api/auth/users/bulk-delete", requireAdmin, (req, res) => {
+  if (req.authUser.name !== adminName) {
+    return res.status(403).json({ message: "只有孙立柱管理员可以批量删除用户账号。" });
+  }
+
+  const targetNames = Array.isArray(req.body.names)
+    ? [...new Set(req.body.names.map((name) => String(name || "").trim()).filter(Boolean))]
+    : [];
+  if (targetNames.length === 0) {
+    return res.status(400).json({ message: "请选择要删除的用户。" });
+  }
+  if (targetNames.includes(adminName)) {
+    return res.status(400).json({ message: "不能删除孙立柱管理员账号。" });
+  }
+
+  const users = readUsers();
+  const deletedNames = [];
+  targetNames.forEach((name) => {
+    if (!users[name]) return;
+    delete users[name];
+    deletedNames.push(name);
+  });
+
+  if (deletedNames.length === 0) {
+    return res.status(404).json({ message: "未找到可删除的用户。" });
+  }
+
+  writeDeletedUsers([...readDeletedUsers(), ...deletedNames]);
+  writeUsers(users);
+  res.json({
+    message: `已删除 ${deletedNames.length} 个用户。`,
+    deletedNames,
+    users: publicPermissionUsers(users)
   });
 });
 
