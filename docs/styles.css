@@ -958,13 +958,13 @@ small {
 
 .coin-form {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1.1fr 1fr 1fr 1fr 1.2fr 0.9fr;
   gap: 14px;
   align-items: end;
 }
 
 .coin-note-field {
-  grid-column: span 3;
+  grid-column: span 5;
 }
 
 .coin-form-actions {
