@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>备份中心</title>
+    <link rel="stylesheet" href="./styles.css?v=20260703-01" />
+  </head>
+  <body>
+    <header class="topbar nav-only">
+      <nav class="top-actions" data-page-nav aria-label="页面导航"></nav>
+    </header>
+
+    <main class="admin-layout">
+      <section class="panel login-panel" id="loginPanel">
+        <div>
+          <h2>备份中心登录</h2>
+          <p>仅管理员可查看、生成和下载系统数据备份。</p>
+        </div>
+        <form class="login-form" id="loginForm">
+          <label class="field">
+            <span>管理员姓名</span>
+            <select id="loginName" name="name" required>
+              <option value="孙立柱">孙立柱</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>管理员秘钥</span>
+            <input id="loginSecret" name="secret" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit">登录</button>
+        </form>
+        <p id="loginMessage" class="message" role="status"></p>
+      </section>
+
+      <section id="backupApp" hidden>
+        <section class="panel backup-hero">
+          <div>
+            <h2>备份中心</h2>
+            <p>系统每天北京时间 0 点自动生成最新备份，并覆盖上一份备份。</p>
+          </div>
+          <div class="backup-actions">
+            <button id="runBackupBtn" type="button">立即备份</button>
+            <a id="downloadBackupLink" class="admin-link secondary-link" href="#" aria-disabled="true">下载最新备份</a>
+          </div>
+        </section>
+
+        <section class="summary-row" id="backupStatusCards"></section>
+
+        <section class="panel">
+          <div class="section-title-row">
+            <h2>备份文件明细</h2>
+            <button id="refreshBackupBtn" type="button" class="secondary-button">刷新状态</button>
+          </div>
+          <div class="table-wrap">
+            <table class="summary-table">
+              <thead>
+                <tr>
+                  <th>文件名称</th>
+                  <th>文件大小</th>
+                  <th>源文件更新时间</th>
+                </tr>
+              </thead>
+              <tbody id="backupFileRows"></tbody>
+            </table>
+          </div>
+          <p id="backupMessage" class="message" role="status"></p>
+        </section>
+      </section>
+    </main>
+
+    <script src="./config.js?v=20260701-01" defer></script>
+    <script src="./nav.js?v=20260705-01" defer></script>
+    <script src="./backup.js?v=20260705-01" defer></script>
+  </body>
+</html>

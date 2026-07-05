@@ -5,6 +5,7 @@ const pageNavItems = [
   { key: "resultSummary", label: "结果汇总", href: "./summary.html" },
   { key: "infoConfig", label: "信息配置", href: "./admin.html#cardConfigPanel", adminOnly: true },
   { key: "fileMaintenance", label: "文件维护", href: "./files.html", adminOnly: true },
+  { key: "backupCenter", label: "备份中心", href: "./backup.html", adminOnly: true },
   { key: "coinManagement", label: "成就币管理", href: "./coins.html", adminOnly: true },
   { key: "passed", label: "成就卡榜单", href: "./passed.html", public: true, secondary: true }
 ];
@@ -41,6 +42,7 @@ function normalizedNavAccess(user) {
       "resultSummary",
       "infoConfig",
       "fileMaintenance",
+      "backupCenter",
       "coinManagement"
     ];
   }

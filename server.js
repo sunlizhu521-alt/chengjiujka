@@ -25,6 +25,8 @@ const rosterFile = path.join(dataDir, "roster.json");
 const coinRecordsFile = path.join(dataDir, "coin-records.json");
 const deletedUsersFile = path.join(dataDir, "deleted-users.json");
 const dingtalkConfigFile = path.join(dataDir, "dingtalk-config.json");
+const backupDir = path.join(dataDir, "backups");
+const latestBackupFile = path.join(backupDir, "latest-backup.json");
 const jsonFileCache = new Map();
 const computedCache = {
   publicPassed: null
@@ -43,6 +45,7 @@ const pagePermissions = [
   { key: "resultSummary", label: "结果汇总" },
   { key: "infoConfig", label: "信息配置" },
   { key: "fileMaintenance", label: "文件维护" },
+  { key: "backupCenter", label: "备份中心" },
   { key: "coinManagement", label: "成就币管理" }
 ];
 const pagePermissionKeys = pagePermissions.map((item) => item.key);
@@ -630,6 +633,103 @@ function updateJsonCache(file, value) {
 
 function invalidateComputedCaches() {
   computedCache.publicPassed = null;
+}
+
+function dataBackupSources() {
+  return [
+    submissionsFile,
+    usersFile,
+    cardConfigFile,
+    rosterFile,
+    coinRecordsFile,
+    deletedUsersFile,
+    dingtalkConfigFile
+  ];
+}
+
+function createLatestBackup(options = {}) {
+  fs.mkdirSync(backupDir, { recursive: true });
+  const files = {};
+  const fileStats = [];
+
+  dataBackupSources().forEach((file) => {
+    if (!fs.existsSync(file)) return;
+    const name = path.basename(file);
+    const stat = fs.statSync(file);
+    const content = fs.readFileSync(file, "utf8").replace(/^\uFEFF/, "");
+    try {
+      files[name] = content ? JSON.parse(content) : null;
+    } catch {
+      files[name] = content;
+    }
+    fileStats.push({
+      name,
+      size: stat.size,
+      modifiedAt: stat.mtime.toISOString()
+    });
+  });
+
+  const snapshot = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    reason: options.reason || "scheduled",
+    actorName: options.actorName || "",
+    fileCount: fileStats.length,
+    files,
+    fileStats
+  };
+  writeJsonAtomic(latestBackupFile, snapshot);
+  return readLatestBackupStatus();
+}
+
+function readLatestBackupStatus() {
+  if (!fs.existsSync(latestBackupFile)) {
+    return {
+      exists: false,
+      generatedAt: "",
+      reason: "",
+      actorName: "",
+      fileCount: 0,
+      size: 0,
+      files: []
+    };
+  }
+
+  const stat = fs.statSync(latestBackupFile);
+  let backup = {};
+  try {
+    backup = readJsonCached(latestBackupFile, {});
+  } catch {
+    backup = {};
+  }
+  return {
+    exists: true,
+    generatedAt: backup.generatedAt || stat.mtime.toISOString(),
+    reason: backup.reason || "",
+    actorName: backup.actorName || "",
+    fileCount: Number(backup.fileCount || 0),
+    size: stat.size,
+    files: Array.isArray(backup.fileStats) ? backup.fileStats : []
+  };
+}
+
+function delayUntilNextChinaMidnight() {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const chinaOffsetMs = 8 * 60 * 60 * 1000;
+  const chinaNow = Date.now() + chinaOffsetMs;
+  const nextMidnight = Math.floor(chinaNow / dayMs) * dayMs + dayMs;
+  return Math.max(1000, nextMidnight - chinaNow);
+}
+
+function scheduleDailyLatestBackup() {
+  setTimeout(() => {
+    try {
+      createLatestBackup({ reason: "scheduled" });
+    } catch (err) {
+      console.error("daily backup failed:", err.message);
+    }
+    scheduleDailyLatestBackup();
+  }, delayUntilNextChinaMidnight());
 }
 
 function normalizeRosterText(value) {
@@ -1647,6 +1747,30 @@ app.get("/api/maintenance/status", requireAdmin, (req, res) => {
   });
 });
 
+app.get("/api/backups/status", requireAdmin, (req, res) => {
+  res.json(readLatestBackupStatus());
+});
+
+app.post("/api/backups/run", requireAdmin, (req, res) => {
+  try {
+    const status = createLatestBackup({
+      reason: "manual",
+      actorName: req.authUser.name
+    });
+    notifyDingTalk("数据备份已生成", [`操作人：${req.authUser.name}`, `备份文件：latest-backup.json`]);
+    res.json({ message: "备份已生成，会覆盖上一份最新备份。", status });
+  } catch (error) {
+    res.status(500).json({ message: error.message || "备份失败" });
+  }
+});
+
+app.get("/api/backups/latest", requireAdmin, (req, res) => {
+  if (!fs.existsSync(latestBackupFile)) {
+    return res.status(404).json({ message: "暂无备份文件" });
+  }
+  res.download(latestBackupFile, "chengjiujka-latest-backup.json");
+});
+
 app.post("/api/roster/import", requireAdmin, upload.single("rosterFile"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "请选择要导入的花名册 Excel 文件。" });
@@ -2066,48 +2190,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "服务器异常，请稍后再试。" });
 });
 
-// 启动时备份数据
-try {
-  const backupDir = path.join(dataDir, "backups");
-  fs.mkdirSync(backupDir, { recursive: true });
-  [submissionsFile, usersFile].forEach((f) => {
-    if (fs.existsSync(f)) {
-      const bak = path.join(dataDir, path.basename(f).replace(".json", ".backup.json"));
-      fs.copyFileSync(f, bak);
-    }
-  });
-} catch (err) {
-  console.error("启动备份失败:", err.message);
-}
-
-// 每6小时定时备份，保留7天
-setInterval(
-  () => {
-    try {
-      const backupDir = path.join(dataDir, "backups");
-      fs.mkdirSync(backupDir, { recursive: true });
-      const now = new Date();
-      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-      const hourStr = String(now.getHours()).padStart(2, "0");
-      ["submissions", "users"].forEach((name) => {
-        const src = path.join(dataDir, `${name}.json`);
-        if (fs.existsSync(src)) {
-          const dst = path.join(backupDir, `${name}-${dateStr}-${hourStr}.json`);
-          fs.copyFileSync(src, dst);
-        }
-      });
-      const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      fs.readdirSync(backupDir).forEach((f) => {
-        if (f.endsWith(".json") && fs.statSync(path.join(backupDir, f)).mtimeMs < sevenDaysAgo) {
-          fs.unlinkSync(path.join(backupDir, f));
-        }
-      });
-    } catch (err) {
-      console.error("定时备份失败:", err.message);
-    }
-  },
-  6 * 60 * 60 * 1000
-);
+scheduleDailyLatestBackup();
 
 app.listen(PORT, () => {
   readUsers();

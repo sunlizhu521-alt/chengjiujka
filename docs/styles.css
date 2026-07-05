@@ -662,6 +662,30 @@ small {
   justify-self: start;
 }
 
+.backup-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.backup-hero p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.backup-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.backup-actions .is-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .query-result {
   display: grid;
   gap: 12px;
