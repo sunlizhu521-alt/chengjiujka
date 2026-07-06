@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡评审台</title>
-    <link rel="stylesheet" href="./styles.css?v=20260703-07" />
+    <link rel="stylesheet" href="./styles.css?v=20260706-01" />
   </head>
   <body>
     <header class="topbar nav-only">
@@ -109,6 +109,26 @@
           <div id="cardConfigEditor" class="card-config-grid"></div>
           <p id="cardConfigMessage" class="message" role="status"></p>
 
+          <div class="import-config-card coin-intro-config">
+            <div>
+              <h3>成就币介绍</h3>
+              <p>用于成就币介绍页面展示。仅管理员可编辑，保存后员工打开介绍页会看到最新内容。</p>
+            </div>
+            <label class="field">
+              <span>页面标题</span>
+              <input id="coinIntroTitle" type="text" placeholder="成就币介绍" />
+            </label>
+            <label class="field">
+              <span>介绍内容</span>
+              <textarea id="coinIntroContent" rows="9" placeholder="请输入成就币规则、获得方式、兑换方式和注意事项。"></textarea>
+            </label>
+            <div class="coin-intro-config-actions">
+              <button id="saveCoinIntroBtn" type="button">保存成就币介绍</button>
+              <span id="coinIntroMeta"></span>
+            </div>
+            <p id="coinIntroMessage" class="message" role="status"></p>
+          </div>
+
           <div class="import-config-card">
             <div>
               <h3>花名册导入</h3>
@@ -147,7 +167,7 @@
 
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./card-data.js?v=20260611-23" defer></script>
-    <script src="./nav.js?v=20260705-01" defer></script>
-    <script src="./admin.js?v=20260703-08" defer></script>
+    <script src="./nav.js?v=20260706-01" defer></script>
+    <script src="./admin.js?v=20260706-01" defer></script>
   </body>
 </html>

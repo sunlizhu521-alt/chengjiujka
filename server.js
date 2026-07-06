@@ -23,6 +23,7 @@ const usersFile = path.join(dataDir, "users.json");
 const cardConfigFile = path.join(dataDir, "card-config.json");
 const rosterFile = path.join(dataDir, "roster.json");
 const coinRecordsFile = path.join(dataDir, "coin-records.json");
+const coinIntroFile = path.join(dataDir, "coin-intro.json");
 const deletedUsersFile = path.join(dataDir, "deleted-users.json");
 const dingtalkConfigFile = path.join(dataDir, "dingtalk-config.json");
 const backupDir = path.join(dataDir, "backups");
@@ -46,7 +47,8 @@ const pagePermissions = [
   { key: "infoConfig", label: "信息配置" },
   { key: "fileMaintenance", label: "文件维护" },
   { key: "backupCenter", label: "备份中心" },
-  { key: "coinManagement", label: "成就币管理" }
+  { key: "coinManagement", label: "成就币管理" },
+  { key: "coinIntro", label: "成就币介绍" }
 ];
 const pagePermissionKeys = pagePermissions.map((item) => item.key);
 const legacyPageKeyMap = {
@@ -54,8 +56,8 @@ const legacyPageKeyMap = {
   summary: "resultSummary",
   cardConfig: "infoConfig"
 };
-const defaultReviewerAccess = ["applicationPage", "reviewPage"];
-const defaultApplicantAccess = ["applicationPage", "passed"];
+const defaultReviewerAccess = ["applicationPage", "reviewPage", "coinIntro"];
+const defaultApplicantAccess = ["applicationPage", "passed", "coinIntro"];
 
 function loadDefaultCardDetails() {
   const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
@@ -163,6 +165,40 @@ function writeCardDetails(details) {
   const normalized = normalizeCardDetails(details);
   writeJsonAtomic(cardConfigFile, normalized);
   refreshCardRuntime(normalized);
+  return normalized;
+}
+
+const defaultCoinIntro = {
+  title: "成就币介绍",
+  content:
+    "成就币是公司对员工成就行为的积分化记录。员工获得成就卡后，会按照成就卡分值发放对应成就币，1 分对应 1 个成就币。\n\n年假可兑换成就币，1 天年假可兑换 20 个成就币。\n\n成就币可用于兑换公司后续开放的奖励，具体兑换项目以公司发布的规则为准。"
+};
+
+function normalizeCoinIntro(intro = {}) {
+  return {
+    title: String(intro.title || defaultCoinIntro.title).trim() || defaultCoinIntro.title,
+    content: String(intro.content || defaultCoinIntro.content).trim() || defaultCoinIntro.content,
+    updatedAt: intro.updatedAt || "",
+    updatedBy: String(intro.updatedBy || "").trim()
+  };
+}
+
+function readCoinIntro() {
+  if (!fs.existsSync(coinIntroFile)) return normalizeCoinIntro(defaultCoinIntro);
+  try {
+    return normalizeCoinIntro(readJsonCached(coinIntroFile, defaultCoinIntro));
+  } catch {
+    return normalizeCoinIntro(defaultCoinIntro);
+  }
+}
+
+function writeCoinIntro(intro, actorName = "") {
+  const normalized = normalizeCoinIntro({
+    ...intro,
+    updatedAt: new Date().toISOString(),
+    updatedBy: actorName
+  });
+  writeJsonAtomic(coinIntroFile, normalized);
   return normalized;
 }
 
@@ -642,6 +678,7 @@ function dataBackupSources() {
     cardConfigFile,
     rosterFile,
     coinRecordsFile,
+    coinIntroFile,
     deletedUsersFile,
     dingtalkConfigFile
   ];
@@ -1844,6 +1881,23 @@ app.patch("/api/card-config", requireAdmin, (req, res) => {
     message: "成就卡配置已保存。",
     cards: normalized
   });
+});
+
+app.get("/api/coin-intro", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.json(readCoinIntro());
+});
+
+app.patch("/api/coin-intro", requireAdmin, (req, res) => {
+  const title = String(req.body.title || "").trim();
+  const content = String(req.body.content || "").trim();
+  if (!title || !content) {
+    return res.status(400).json({ message: "标题和介绍内容不能为空。" });
+  }
+
+  const saved = writeCoinIntro({ title, content }, req.authUser.name);
+  notifyDingTalk("成就币介绍已更新", [`操作人：${req.authUser.name}`, `标题：${saved.title}`]);
+  res.json({ message: "成就币介绍已保存。", intro: saved });
 });
 
 app.get("/api/coins", requireAdmin, (req, res) => {

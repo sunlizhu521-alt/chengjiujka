@@ -686,6 +686,67 @@ small {
   pointer-events: none;
 }
 
+.coin-intro-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.coin-intro-head {
+  display: grid;
+  gap: 8px;
+}
+
+.coin-intro-head span {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.coin-intro-head h1 {
+  margin: 0;
+  color: #17182f;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.1;
+}
+
+.coin-intro-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.coin-intro-content {
+  display: grid;
+  gap: 14px;
+  color: #242647;
+  font-size: 17px;
+  line-height: 1.85;
+}
+
+.coin-intro-content p {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid #ebe9ff;
+  border-radius: 8px;
+  background: #fbfbff;
+}
+
+.coin-intro-config textarea {
+  min-height: 180px;
+  resize: vertical;
+}
+
+.coin-intro-config-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.coin-intro-config-actions span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .query-result {
   display: grid;
   gap: 12px;

@@ -5,6 +5,7 @@ let currentUser = null;
 const attachmentImageIndexes = {};
 
 let cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
+let coinIntro = { title: "成就币介绍", content: "", updatedAt: "", updatedBy: "" };
 const reviewMembers = ["孙立柱", "王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const pageLabels = {
   applicationPage: "申请页面",
@@ -48,6 +49,11 @@ const cardConfigPanel = document.querySelector("#cardConfigPanel");
 const cardConfigEditor = document.querySelector("#cardConfigEditor");
 const saveCardConfigBtn = document.querySelector("#saveCardConfigBtn");
 const cardConfigMessage = document.querySelector("#cardConfigMessage");
+const coinIntroTitle = document.querySelector("#coinIntroTitle");
+const coinIntroContent = document.querySelector("#coinIntroContent");
+const saveCoinIntroBtn = document.querySelector("#saveCoinIntroBtn");
+const coinIntroMeta = document.querySelector("#coinIntroMeta");
+const coinIntroMessage = document.querySelector("#coinIntroMessage");
 const rosterImportForm = document.querySelector("#rosterImportForm");
 const rosterFileInput = document.querySelector("#rosterFileInput");
 const rosterSummary = document.querySelector("#rosterSummary");
@@ -179,6 +185,35 @@ async function loadCardDetails() {
   } catch {
     cardDetails = window.CHENGJIUKA_CARD_DETAILS || {};
   }
+}
+
+function renderCoinIntroEditor() {
+  if (!coinIntroTitle || !coinIntroContent) return;
+  coinIntroTitle.value = coinIntro.title || "成就币介绍";
+  coinIntroContent.value = coinIntro.content || "";
+  if (coinIntroMeta) {
+    const updatedAt = coinIntro.updatedAt ? formatDate(coinIntro.updatedAt) : "尚未保存";
+    const updatedBy = coinIntro.updatedBy ? ` / ${coinIntro.updatedBy}` : "";
+    coinIntroMeta.textContent = `最近更新：${updatedAt}${updatedBy}`;
+  }
+}
+
+async function loadCoinIntro() {
+  if (!hasBackend()) {
+    renderCoinIntroEditor();
+    return;
+  }
+
+  try {
+    const response = await fetch(apiUrl("/api/coin-intro"));
+    const result = await response.json();
+    if (response.ok && result && typeof result === "object") {
+      coinIntro = result;
+    }
+  } catch {
+    coinIntro = { title: "成就币介绍", content: "", updatedAt: "", updatedBy: "" };
+  }
+  renderCoinIntroEditor();
 }
 
 function authHeaders(extra = {}) {
@@ -845,7 +880,7 @@ loginForm.addEventListener("submit", async (event) => {
     authToken = result.token;
     localStorage.setItem("chengjiukaReviewToken", authToken);
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
-    await loadCardDetails();
+    await Promise.all([loadCardDetails(), loadCoinIntro()]);
     showReviewApp(result.user);
     await Promise.all([
       hasPageAccess("reviewPage", result.user) ? loadRecords() : Promise.resolve(),
@@ -874,7 +909,7 @@ setupForm.addEventListener("submit", async (event) => {
     authToken = result.token;
     localStorage.setItem("chengjiukaReviewToken", authToken);
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
-    await loadCardDetails();
+    await Promise.all([loadCardDetails(), loadCoinIntro()]);
     showReviewApp(result.user);
     await Promise.all([
       hasPageAccess("reviewPage", result.user) ? loadRecords() : Promise.resolve(),
@@ -1163,6 +1198,44 @@ saveCardConfigBtn.addEventListener("click", async () => {
   }
 });
 
+if (saveCoinIntroBtn) {
+  saveCoinIntroBtn.addEventListener("click", async () => {
+    if (!currentUser || currentUser.role !== "admin") return;
+
+    const payload = {
+      title: coinIntroTitle.value.trim(),
+      content: coinIntroContent.value.trim()
+    };
+    if (!payload.title || !payload.content) {
+      coinIntroMessage.textContent = "标题和介绍内容不能为空。";
+      coinIntroMessage.className = "message error";
+      return;
+    }
+
+    saveCoinIntroBtn.disabled = true;
+    coinIntroMessage.textContent = "";
+    coinIntroMessage.className = "message";
+    try {
+      const response = await fetch(apiUrl("/api/coin-intro"), {
+        method: "PATCH",
+        headers: authHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "保存失败");
+      coinIntro = result.intro || payload;
+      renderCoinIntroEditor();
+      coinIntroMessage.textContent = result.message || "成就币介绍已保存。";
+      coinIntroMessage.className = "message success";
+    } catch (error) {
+      coinIntroMessage.textContent = error.message;
+      coinIntroMessage.className = "message error";
+    } finally {
+      saveCoinIntroBtn.disabled = false;
+    }
+  });
+}
+
 if (rosterImportForm) {
   rosterImportForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1208,7 +1281,7 @@ async function restoreSession() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "登录已过期");
     localStorage.setItem("chengjiukaReviewUser", JSON.stringify(result.user));
-    await loadCardDetails();
+    await Promise.all([loadCardDetails(), loadCoinIntro()]);
     showReviewApp(result.user);
     await Promise.all([
       hasPageAccess("reviewPage", result.user) ? loadRecords() : Promise.resolve(),
