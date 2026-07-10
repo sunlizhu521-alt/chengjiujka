@@ -19,7 +19,6 @@ const legacyPageKeyMapForNav = {
 const navTokenKey = "chengjiukaReviewToken";
 const navUserKey = "chengjiukaReviewUser";
 const navApiBase = (window.CHENGJIUKA_API_BASE || "").replace(/\/$/, "");
-const managementPageNames = new Set(["admin.html", "summary.html", "files.html", "backup.html", "coins.html"]);
 
 function navApiUrl(path) {
   return navApiBase ? `${navApiBase}${path}` : path;
@@ -76,9 +75,8 @@ function renderPageNav() {
 
   const user = readNavUser();
   const access = new Set(normalizedNavAccess(user));
-  const showFullManagementNav = !user && managementPageNames.has(currentNavPageName());
   const items = pageNavItems.filter((item) => {
-    if (showFullManagementNav) return true;
+    if (!user) return true;
     if (item.key === "passed") return true;
     if (item.public) return true;
     if (item.adminOnly) return isNavAdmin(user);
