@@ -15,7 +15,9 @@ const pageLabels = {
   resultSummary: "结果汇总",
   infoConfig: "信息配置",
   fileMaintenance: "文件维护",
-  coinManagement: "成就币管理"
+  backupCenter: "备份中心",
+  coinManagement: "成就币管理",
+  coinIntro: "成就币介绍"
 };
 let permissionPages = Object.entries(pageLabels).map(([key, label]) => ({ key, label }));
 let permissionUsers = [];
