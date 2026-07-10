@@ -1278,6 +1278,14 @@ small {
   font-size: 18px;
 }
 
+.record-head-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;

@@ -734,6 +734,9 @@ function renderRecords() {
   const autoScore = detail.score || "";
   const attachments = renderAttachmentPreviewList(item.attachments || [], item.id, "apply");
   const currentStatus = normalizeReviewStatus(item.reviewStatus);
+  const deleteButton = isRootAdminUser()
+    ? `<button type="button" class="delete-submission-record-btn danger-button" data-id="${escapeHtml(item.id)}">删除申请</button>`
+    : "";
 
   recordsEl.innerHTML = `
     <article class="record" data-id="${escapeHtml(item.id)}">
@@ -743,7 +746,10 @@ function renderRecords() {
           <p>申请编号：${escapeHtml(item.id || "")}</p>
           <p>提交时间：${escapeHtml(formatDate(item.submittedAt))}</p>
         </div>
-        <span class="${badgeClass(currentStatus)}">${escapeHtml(currentStatus)}</span>
+        <div class="record-head-actions">
+          <span class="${badgeClass(currentStatus)}">${escapeHtml(currentStatus)}</span>
+          ${deleteButton}
+        </div>
       </div>
 
       <div class="record-grid">
@@ -1031,6 +1037,40 @@ recordsEl.addEventListener("submit", async (event) => {
 });
 
 recordsEl.addEventListener("click", (event) => {
+  const deleteButton = event.target.closest(".delete-submission-record-btn");
+  if (deleteButton) {
+    if (!isRootAdminUser()) {
+      setAdminMessage("只有孙立柱管理员可以删除申请记录。", "error");
+      return;
+    }
+
+    const id = deleteButton.dataset.id;
+    const record = allRecords.find((item) => item.id === id);
+    const label = record ? `${record.applicantName} - ${record.cardType}` : id;
+    if (!window.confirm(`确认删除申请记录：${label}？删除后附件也会一起删除。`)) return;
+
+    deleteButton.disabled = true;
+    deleteButton.textContent = "删除中...";
+    fetch(apiUrl(`/api/submissions/${encodeURIComponent(id)}`), {
+      method: "DELETE",
+      headers: authHeaders()
+    })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "删除失败");
+        allRecords = allRecords.filter((item) => item.id !== id);
+        const records = filteredRecords();
+        if (currentRecordIndex >= records.length) currentRecordIndex = Math.max(records.length - 1, 0);
+        renderRecords();
+        setAdminMessage(result.message || "申请记录已删除。", "success");
+      })
+      .catch((error) => {
+        setAdminMessage(error.message, "error");
+        renderRecords();
+      });
+    return;
+  }
+
   const button = event.target.closest(".attachment-image-prev, .attachment-image-next");
   if (!button) return;
 
