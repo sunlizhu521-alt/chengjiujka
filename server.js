@@ -340,10 +340,8 @@ async function sendDingTalkNotice(action, lines = []) {
 }
 
 function notifyDingTalk(action, lines = []) {
-  setImmediate(() => {
-    sendDingTalkNotice(action, lines).catch((error) => {
-      console.error(error.message || "钉钉通知发送失败");
-    });
+  sendDingTalkNotice(action, lines).catch((error) => {
+    console.error("dingtalk notice failed:", error.message);
   });
 }
 
@@ -1195,6 +1193,17 @@ function removeUploadedFiles(files = []) {
   });
 }
 
+function deleteSubmissionRecord(id) {
+  const records = readSubmissions();
+  const recordIndex = records.findIndex((item) => item.id === id);
+  if (recordIndex === -1) return null;
+
+  const [removedRecord] = records.splice(recordIndex, 1);
+  removeUploadedFiles([...(removedRecord.attachments || []), ...(removedRecord.feedbackFiles || [])]);
+  writeSubmissions(records);
+  return removedRecord;
+}
+
 function uploadedFileInfo(file) {
   return {
     originalName: normalizeOriginalName(file.originalname),
@@ -1490,7 +1499,7 @@ app.post("/api/auth/register", (req, res) => {
   users[name] = user;
   writeDeletedUsers(readDeletedUsers().filter((deletedName) => deletedName !== name));
   writeUsers(users);
-  notifyDingTalk("新用户注册", [`姓名：${user.name}`, `默认权限：申请页面、成就卡榜单`]);
+
   res.json({ user: publicUser(user), message: "注册成功，已开通申请页面和成就卡榜单。" });
 });
 
@@ -1516,11 +1525,7 @@ app.patch("/api/auth/users/:name/access", requireAdmin, (req, res) => {
   user.pageAccess = isAdminUser(user) ? pagePermissionKeys : requestedAccess;
   user.updatedAt = new Date().toISOString();
   writeUsers(users);
-  notifyDingTalk("用户权限已调整", [
-    `操作人：${req.authUser.name}`,
-    `对象：${user.name}`,
-    `授权页面：${normalizePageAccess(user).map((key) => (pagePermissions.find((page) => page.key === key) || {}).label || key).join("、") || "无"}`
-  ]);
+
   res.json({ user: publicUser(user), message: "用户权限已保存。" });
 });
 
@@ -1543,7 +1548,7 @@ app.post("/api/auth/users/:name/reset-secret", requireAdmin, (req, res) => {
   user.mustChangeSecret = true;
   user.updatedAt = new Date().toISOString();
   writeUsers(users);
-  notifyDingTalk("用户登录密码已重置", [`操作人：${req.authUser.name}`, `对象：${user.name}`]);
+
   res.json({ message: `秘钥已重置为 ${newSecret}，用户下次登录需重新设置。` });
 });
 
@@ -1565,7 +1570,7 @@ app.delete("/api/auth/users/:name", requireAdmin, (req, res) => {
   delete users[targetName];
   writeDeletedUsers([...readDeletedUsers(), targetName]);
   writeUsers(users);
-  notifyDingTalk("用户账号已删除", [`操作人：${req.authUser.name}`, `对象：${targetName}`]);
+
   res.json({
     message: "用户已删除。",
     users: publicPermissionUsers(users)
@@ -1601,7 +1606,7 @@ app.post("/api/auth/users/bulk-delete", requireAdmin, (req, res) => {
 
   writeDeletedUsers([...readDeletedUsers(), ...deletedNames]);
   writeUsers(users);
-  notifyDingTalk("批量删除用户账号", [`操作人：${req.authUser.name}`, `数量：${deletedNames.length}`, `对象：${deletedNames.join("、")}`]);
+
   res.json({
     message: `已删除 ${deletedNames.length} 个用户。`,
     deletedNames,
@@ -1710,13 +1715,12 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
 
   records.unshift(record);
   writeSubmissions(records);
+
   notifyDingTalk("提交成就卡申请", [
-    `申请编号：${record.id}`,
     `申报人：${record.applicantName}`,
-    `部门：${record.department}`,
-    `项目：${record.cardType}`,
-    `申报日期：${record.applicationDate}`,
-    `材料数量：${record.attachments.length}`
+    `部门：${record.department || ""}`,
+    `成就卡：${record.cardType}`,
+    `申请编号：${record.id}`
   ]);
 
   res.status(201).json({
@@ -1794,7 +1798,7 @@ app.post("/api/backups/run", requireAdmin, (req, res) => {
       reason: "manual",
       actorName: req.authUser.name
     });
-    notifyDingTalk("数据备份已生成", [`操作人：${req.authUser.name}`, `备份文件：latest-backup.json`]);
+
     res.json({ message: "备份已生成，会覆盖上一份最新备份。", status });
   } catch (error) {
     res.status(500).json({ message: error.message || "备份失败" });
@@ -1896,7 +1900,7 @@ app.patch("/api/coin-intro", requireAdmin, (req, res) => {
   }
 
   const saved = writeCoinIntro({ title, content }, req.authUser.name);
-  notifyDingTalk("成就币介绍已更新", [`操作人：${req.authUser.name}`, `标题：${saved.title}`]);
+
   res.json({ message: "成就币介绍已保存。", intro: saved });
 });
 
@@ -1986,13 +1990,7 @@ app.post("/api/coins", requireAdmin, (req, res) => {
   };
   records.unshift(record);
   writeCoinRecords(records);
-  notifyDingTalk("新增成就币记录", [
-    `操作人：${req.authUser.name}`,
-    `对象：${record.applicantName}`,
-    `类型：${coinRecordTypeLabels[record.type] || record.type}`,
-    `变动：${record.amount > 0 ? "+" : ""}${record.amount} 币`,
-    `日期：${record.recordDate}`
-  ]);
+
 
   res.json({
     message: "成就币记录已保存。",
@@ -2013,12 +2011,7 @@ app.delete("/api/coins/:id", requireAdmin, (req, res) => {
 
   const [removedRecord] = records.splice(index, 1);
   writeCoinRecords(records);
-  notifyDingTalk("删除成就币记录", [
-    `操作人：${req.authUser.name}`,
-    `对象：${removedRecord.applicantName || ""}`,
-    `类型：${coinRecordTypeLabels[removedRecord.type] || removedRecord.type || "未填写"}`,
-    `变动：${removedRecord.amount > 0 ? "+" : ""}${removedRecord.amount || 0} 币`
-  ]);
+
   res.json({ message: "成就币记录已删除。", id: req.params.id });
 });
 
@@ -2068,13 +2061,7 @@ app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("r
   record.reviewSummary = finalReview;
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
-  notifyDingTalk("提交评审意见", [
-    `评审人：${req.authUser.name}`,
-    `申报人：${record.applicantName}`,
-    `项目：${record.cardType}`,
-    `本次意见：${reviewStatus}`,
-    `当前结果：${record.reviewStatus}`
-  ]);
+
 
   res.json(publicSubmissionForReview(record));
 });
@@ -2094,12 +2081,7 @@ app.post("/api/submissions/:id/feedback-files", requireAdmin, upload.array("feed
   record.feedbackFiles = [...(record.feedbackFiles || []), ...req.files.map(uploadedFileInfo)];
   record.feedbackUpdatedAt = new Date().toISOString();
   writeSubmissions(records);
-  notifyDingTalk("上传评审组反馈文件", [
-    `操作人：${req.authUser.name}`,
-    `申报人：${record.applicantName}`,
-    `项目：${record.cardType}`,
-    `本次上传：${req.files.length} 个`
-  ]);
+
   res.json(publicSubmissionForReview(record));
 });
 
@@ -2120,11 +2102,7 @@ app.patch("/api/submissions/:id/query-secret", requireAdmin, (req, res) => {
   record.querySecretResetAt = new Date().toISOString();
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
-  notifyDingTalk("重置查询秘钥", [
-    `操作人：${req.authUser.name}`,
-    `申报人：${record.applicantName}`,
-    `项目：${record.cardType}`
-  ]);
+
   res.json({ message: "查询秘钥已重置。", record: publicSubmissionForReview(record) });
 });
 
@@ -2148,12 +2126,7 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   record.resultPublishedBy = resultPublished ? req.authUser.name : "";
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
-  notifyDingTalk(resultPublished ? "确认展示评审结果" : "取消展示评审结果", [
-    `操作人：${req.authUser.name}`,
-    `申报人：${record.applicantName}`,
-    `项目：${record.cardType}`,
-    `评审结果：${record.reviewStatus || "待评审"}`
-  ]);
+
 
   res.json(publicSubmissionForReview(record));
 });
@@ -2180,11 +2153,7 @@ app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
   const keptRecords = records.filter((record) => !idSet.has(record.id));
   removeUploadedFiles(removedRecords.flatMap((record) => [...(record.attachments || []), ...(record.feedbackFiles || [])]));
   writeSubmissions(keptRecords);
-  notifyDingTalk("批量删除申请记录", [
-    `操作人：${req.authUser.name}`,
-    `数量：${removedRecords.length}`,
-    `对象：${removedRecords.map((record) => `${record.applicantName}-${record.cardType}`).join("、")}`
-  ]);
+
 
   res.json({
     message: `已删除 ${removedRecords.length} 条申请记录。`,
@@ -2192,28 +2161,21 @@ app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
   });
 });
 
-app.delete("/api/submissions/:id", requireAdmin, (req, res) => {
+function handleDeleteSubmissionRequest(req, res) {
   if (req.authUser.name !== adminName) {
     return res.status(403).json({ message: "只有管理员孙立柱可以删除申请记录。" });
   }
 
-  const records = readSubmissions();
-  const recordIndex = records.findIndex((item) => item.id === req.params.id);
-  if (recordIndex === -1) {
+  const removedRecord = deleteSubmissionRecord(req.params.id);
+  if (!removedRecord) {
     return res.status(404).json({ message: "未找到提交记录。" });
   }
 
-  const [removedRecord] = records.splice(recordIndex, 1);
-  removeUploadedFiles([...(removedRecord.attachments || []), ...(removedRecord.feedbackFiles || [])]);
-  writeSubmissions(records);
-  notifyDingTalk("删除申请记录", [
-    `操作人：${req.authUser.name}`,
-    `申报人：${removedRecord.applicantName}`,
-    `项目：${removedRecord.cardType}`,
-    `状态：${removedRecord.reviewStatus || "待评审"}`
-  ]);
   res.json({ message: "申请记录已删除。", id: req.params.id });
-});
+}
+
+app.post("/api/submissions/:id/delete", requireAdmin, handleDeleteSubmissionRequest);
+app.delete("/api/submissions/:id", requireAdmin, handleDeleteSubmissionRequest);
 
 app.get("/api/files/:filename", requireReviewUser, requirePageAccess("reviewPage", "resultSummary"), (req, res) => {
   const safeName = path.basename(req.params.filename);

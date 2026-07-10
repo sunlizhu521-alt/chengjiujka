@@ -353,9 +353,10 @@ summaryBody.addEventListener("click", async (event) => {
 
   button.disabled = true;
   try {
-    const response = await fetch(apiUrl(`/api/submissions/${encodeURIComponent(id)}`), {
-      method: "DELETE",
-      headers: authHeaders()
+    const response = await fetch(apiUrl(`/api/submissions/${encodeURIComponent(id)}/delete`), {
+      method: "POST",
+      headers: authHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({})
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "删除失败");

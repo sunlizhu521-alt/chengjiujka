@@ -1051,9 +1051,10 @@ recordsEl.addEventListener("click", (event) => {
 
     deleteButton.disabled = true;
     deleteButton.textContent = "删除中...";
-    fetch(apiUrl(`/api/submissions/${encodeURIComponent(id)}`), {
-      method: "DELETE",
-      headers: authHeaders()
+    fetch(apiUrl(`/api/submissions/${encodeURIComponent(id)}/delete`), {
+      method: "POST",
+      headers: authHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({})
     })
       .then(async (response) => {
         const result = await response.json();
