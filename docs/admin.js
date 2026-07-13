@@ -859,6 +859,20 @@ async function loadRecords(options = {}) {
   }
 }
 
+async function refreshRecordsAfterDelete() {
+  try {
+    const response = await fetch(apiUrl("/api/submissions"), {
+      headers: authHeaders()
+    });
+    if (!response.ok) return false;
+    allRecords = await response.json();
+    renderRecords();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function replaceRecord(updatedRecord) {
   allRecords = allRecords.map((item) => (item.id === updatedRecord.id ? updatedRecord : item));
   const records = filteredRecords();
@@ -1066,7 +1080,11 @@ recordsEl.addEventListener("click", (event) => {
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "删除失败");
-        await loadRecords({ silent: true });
+        allRecords = allRecords.filter((item) => item.id !== id);
+        const records = filteredRecords();
+        if (currentRecordIndex >= records.length) currentRecordIndex = Math.max(records.length - 1, 0);
+        renderRecords();
+        await refreshRecordsAfterDelete();
         setAdminMessage("删除成功", "success");
       })
       .catch((error) => {
