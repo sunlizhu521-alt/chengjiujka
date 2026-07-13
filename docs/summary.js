@@ -267,6 +267,7 @@ async function loadRecords(options = {}) {
 
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
+      cache: "no-store",
       headers: authHeaders()
     });
     const result = await response.json();
@@ -286,6 +287,7 @@ async function loadRecords(options = {}) {
 async function refreshRecordsAfterDelete() {
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
+      cache: "no-store",
       headers: authHeaders()
     });
     if (!response.ok) return false;
@@ -343,10 +345,10 @@ if (bulkDeleteBtn) {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "批量删除失败");
       const deletedIds = new Set(result.deletedIds || ids);
-      allRecords = allRecords.filter((item) => !deletedIds.has(item.id));
+      allRecords = Array.isArray(result.records) ? result.records : allRecords.filter((item) => !deletedIds.has(item.id));
       selectedRecordIds.clear();
       renderTable();
-      await refreshRecordsAfterDelete();
+      if (!Array.isArray(result.records)) await refreshRecordsAfterDelete();
       setSummaryMessage(`删除成功，已删除 ${deletedIds.size} 条记录。`, "success");
     } catch (error) {
       setSummaryMessage(error.message, "error");
@@ -377,10 +379,10 @@ summaryBody.addEventListener("click", async (event) => {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "删除失败");
-    allRecords = allRecords.filter((item) => item.id !== id);
+    allRecords = Array.isArray(result.records) ? result.records : allRecords.filter((item) => item.id !== id);
     selectedRecordIds.delete(id);
     renderTable();
-    await refreshRecordsAfterDelete();
+    if (!Array.isArray(result.records)) await refreshRecordsAfterDelete();
     setSummaryMessage("删除成功", "success");
   } catch (error) {
     setSummaryMessage(error.message, "error");

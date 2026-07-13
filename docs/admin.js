@@ -846,6 +846,7 @@ async function loadRecords(options = {}) {
 
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
+      cache: "no-store",
       headers: authHeaders()
     });
     const result = await response.json();
@@ -862,6 +863,7 @@ async function loadRecords(options = {}) {
 async function refreshRecordsAfterDelete() {
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
+      cache: "no-store",
       headers: authHeaders()
     });
     if (!response.ok) return false;
@@ -1080,11 +1082,11 @@ recordsEl.addEventListener("click", (event) => {
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "删除失败");
-        allRecords = allRecords.filter((item) => item.id !== id);
+        allRecords = Array.isArray(result.records) ? result.records : allRecords.filter((item) => item.id !== id);
         const records = filteredRecords();
         if (currentRecordIndex >= records.length) currentRecordIndex = Math.max(records.length - 1, 0);
         renderRecords();
-        await refreshRecordsAfterDelete();
+        if (!Array.isArray(result.records)) await refreshRecordsAfterDelete();
         setAdminMessage("删除成功", "success");
       })
       .catch((error) => {

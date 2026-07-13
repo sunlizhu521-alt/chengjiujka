@@ -628,8 +628,24 @@ function writeCoinRecords(records) {
 
 function writeJsonAtomic(file, value) {
   const tmp = file + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf8");
+  const fd = fs.openSync(tmp, "w");
+  try {
+    fs.writeFileSync(fd, JSON.stringify(value, null, 2), "utf8");
+    fs.fsyncSync(fd);
+  } finally {
+    fs.closeSync(fd);
+  }
   fs.renameSync(tmp, file);
+  try {
+    const dirFd = fs.openSync(path.dirname(file), "r");
+    try {
+      fs.fsyncSync(dirFd);
+    } finally {
+      fs.closeSync(dirFd);
+    }
+  } catch {
+    // Some platforms do not support fsync on directories.
+  }
   updateJsonCache(file, value);
   invalidateComputedCaches();
 }
@@ -2019,8 +2035,19 @@ app.delete("/api/coins/:id", requireAdmin, (req, res) => {
   res.json({ message: "成就币记录已删除。", id: req.params.id });
 });
 
+function publicSubmissionsPayload() {
+  return readSubmissions().map(publicSubmissionForReview);
+}
+
+function setNoStore(res) {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+}
+
 app.get("/api/submissions", requireReviewUser, requirePageAccess("reviewPage", "resultSummary"), (req, res) => {
-  res.json(readSubmissions().map(publicSubmissionForReview));
+  setNoStore(res);
+  res.json(publicSubmissionsPayload());
 });
 
 app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("reviewPage"), (req, res) => {
@@ -2136,6 +2163,7 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
 });
 
 app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
+  setNoStore(res);
   if (!canDeleteAnyStatusSubmission(req.authUser)) {
     return res.status(403).json({ message: "只有管理员孙立柱可以批量删除申请记录。" });
   }
@@ -2161,11 +2189,13 @@ app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
 
   res.json({
     message: `已删除 ${removedRecords.length} 条申请记录。`,
-    deletedIds: removedRecords.map((record) => record.id)
+    deletedIds: removedRecords.map((record) => record.id),
+    records: publicSubmissionsPayload()
   });
 });
 
 function handleDeleteSubmissionRequest(req, res) {
+  setNoStore(res);
   if (!canDeleteAnyStatusSubmission(req.authUser)) {
     return res.status(403).json({ message: "只有管理员孙立柱可以删除申请记录。" });
   }
@@ -2175,7 +2205,7 @@ function handleDeleteSubmissionRequest(req, res) {
     return res.status(404).json({ message: "未找到提交记录。" });
   }
 
-  res.json({ message: "申请记录已删除。", id: req.params.id });
+  res.json({ message: "申请记录已删除。", id: req.params.id, records: publicSubmissionsPayload() });
 }
 
 app.post("/api/submissions/:id/delete", requireAdmin, handleDeleteSubmissionRequest);
