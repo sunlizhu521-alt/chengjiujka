@@ -1531,7 +1531,7 @@ app.post("/api/auth/register", (req, res) => {
   writeDeletedUsers(readDeletedUsers().filter((deletedName) => deletedName !== name));
   writeUsers(users);
 
-  res.json({ user: publicUser(user), message: "注册成功，已开通申请页面和成就卡榜单。" });
+  res.json({ user: publicUser(user), message: "注册成功，已开通申请页面、成就币介绍和成就卡榜单。" });
 });
 
 app.get("/api/auth/users", requireAdmin, (req, res) => {
@@ -1680,6 +1680,11 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
 
   const records = readSubmissions();
   const normalizedApplicantName = applicantName.trim();
+  const loggedInUser = authenticateRequest(req);
+  if (loggedInUser && loggedInUser.name !== normalizedApplicantName) {
+    removeUploadedFiles(req.files);
+    return res.status(403).json({ message: "申报人姓名必须与当前登录账号一致。" });
+  }
   const rosterEmployee = findRosterEmployee(normalizedApplicantName);
   if (!rosterEmployee) {
     removeUploadedFiles(req.files);

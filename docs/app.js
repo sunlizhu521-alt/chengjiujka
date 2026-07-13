@@ -41,12 +41,19 @@ function readStoredUser() {
   }
 }
 
-function applyLoggedInApplicantName(options = {}) {
+function applyLoggedInApplicantName() {
   const user = readStoredUser();
   const userName = String(user?.name || "").trim();
-  if (!userName) return;
-  if (!options.force && applicantNameInput.value.trim()) return;
+  if (!userName) {
+    applicantNameInput.readOnly = false;
+    applicantNameInput.removeAttribute("aria-readonly");
+    applicantNameInput.removeAttribute("title");
+    return;
+  }
   applicantNameInput.value = userName;
+  applicantNameInput.readOnly = true;
+  applicantNameInput.setAttribute("aria-readonly", "true");
+  applicantNameInput.title = "申报人姓名与当前登录账号一致";
 }
 
 function escapeHtml(value) {
@@ -548,8 +555,10 @@ form.addEventListener("submit", async (event) => {
   setMessage("", "");
 
   try {
+    const reviewToken = localStorage.getItem("chengjiukaReviewToken") || "";
     const response = await fetch(apiUrl("/api/submissions"), {
       method: "POST",
+      headers: reviewToken ? { "x-review-token": reviewToken } : {},
       body: data
     });
     const result = await response.json();
