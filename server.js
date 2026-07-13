@@ -1203,9 +1203,20 @@ function requirePageAccess(...pages) {
   };
 }
 
+function resolveUploadedFilePath(file) {
+  if (!file || typeof file !== "object") return "";
+  if (file.path) return file.path;
+  if (!file.filename) return "";
+  return path.join(uploadDir, path.basename(file.filename));
+}
+
 function removeUploadedFiles(files = []) {
   files.forEach((file) => {
-    fs.rm(file.path, { force: true }, () => {});
+    const filePath = resolveUploadedFilePath(file);
+    if (!filePath) return;
+    fs.rm(filePath, { force: true }, (err) => {
+      if (err) console.error("remove uploaded file failed:", err.message);
+    });
   });
 }
 
@@ -1215,8 +1226,8 @@ function deleteSubmissionRecord(id) {
   if (recordIndex === -1) return null;
 
   const [removedRecord] = records.splice(recordIndex, 1);
-  removeUploadedFiles([...(removedRecord.attachments || []), ...(removedRecord.feedbackFiles || [])]);
   writeSubmissions(records);
+  removeUploadedFiles([...(removedRecord.attachments || []), ...(removedRecord.feedbackFiles || [])]);
   return removedRecord;
 }
 
@@ -2183,8 +2194,8 @@ app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
   }
 
   const keptRecords = records.filter((record) => !idSet.has(record.id));
-  removeUploadedFiles(removedRecords.flatMap((record) => [...(record.attachments || []), ...(record.feedbackFiles || [])]));
   writeSubmissions(keptRecords);
+  removeUploadedFiles(removedRecords.flatMap((record) => [...(record.attachments || []), ...(record.feedbackFiles || [])]));
 
 
   res.json({
