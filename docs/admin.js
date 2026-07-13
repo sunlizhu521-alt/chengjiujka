@@ -827,7 +827,8 @@ function showLogin() {
   if (typeof renderPageNav === "function") renderPageNav();
 }
 
-async function loadRecords() {
+async function loadRecords(options = {}) {
+  const silent = Boolean(options.silent);
   if (!hasBackend()) {
     setAdminMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
     return;
@@ -841,7 +842,7 @@ async function loadRecords() {
     return;
   }
 
-  setAdminMessage("正在刷新记录...", "");
+  if (!silent) setAdminMessage("正在刷新记录...", "");
 
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
@@ -851,7 +852,7 @@ async function loadRecords() {
     if (!response.ok) throw new Error(result.message || "加载失败");
     allRecords = result;
     renderRecords();
-    setAdminMessage("记录已加载。", "success");
+    if (!silent) setAdminMessage("记录已加载。", "success");
   } catch (error) {
     setAdminMessage(error.message, "error");
     if (/登录|权限|token|401/.test(error.message)) showLogin();
@@ -1065,10 +1066,7 @@ recordsEl.addEventListener("click", (event) => {
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || "删除失败");
-        allRecords = allRecords.filter((item) => item.id !== id);
-        const records = filteredRecords();
-        if (currentRecordIndex >= records.length) currentRecordIndex = Math.max(records.length - 1, 0);
-        renderRecords();
+        await loadRecords({ silent: true });
         setAdminMessage("删除成功", "success");
       })
       .catch((error) => {

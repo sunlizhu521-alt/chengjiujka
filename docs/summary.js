@@ -208,7 +208,8 @@ function renderTable() {
   updateSelectionState(records);
 }
 
-async function loadRecords() {
+async function loadRecords(options = {}) {
+  const silent = Boolean(options.silent);
   if (!hasBackend()) {
     setSummaryMessage("当前固定入口还没有配置后端地址，请管理员先部署后端并填写 docs/config.js。", "error");
     return;
@@ -262,7 +263,7 @@ async function loadRecords() {
 
   loadBtn.disabled = true;
   loadBtn.textContent = "加载中...";
-  setSummaryMessage("", "");
+  if (!silent) setSummaryMessage("", "");
 
   try {
     const response = await fetch(apiUrl("/api/submissions"), {
@@ -273,7 +274,7 @@ async function loadRecords() {
     allRecords = result;
     selectedRecordIds.clear();
     renderTable();
-    setSummaryMessage(`已加载全部 ${allRecords.length} 条申请记录。`, "success");
+    if (!silent) setSummaryMessage(`已加载全部 ${allRecords.length} 条申请记录。`, "success");
   } catch (error) {
     setSummaryMessage(error.message, "error");
   } finally {
@@ -327,9 +328,8 @@ if (bulkDeleteBtn) {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "批量删除失败");
       const deletedIds = new Set(result.deletedIds || ids);
-      allRecords = allRecords.filter((item) => !deletedIds.has(item.id));
       selectedRecordIds.clear();
-      renderTable();
+      await loadRecords({ silent: true });
       setSummaryMessage(`删除成功，已删除 ${deletedIds.size} 条记录。`, "success");
     } catch (error) {
       setSummaryMessage(error.message, "error");
@@ -360,9 +360,8 @@ summaryBody.addEventListener("click", async (event) => {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "删除失败");
-    allRecords = allRecords.filter((item) => item.id !== id);
     selectedRecordIds.delete(id);
-    renderTable();
+    await loadRecords({ silent: true });
     setSummaryMessage("删除成功", "success");
   } catch (error) {
     setSummaryMessage(error.message, "error");
