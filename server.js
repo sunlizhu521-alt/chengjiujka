@@ -1559,19 +1559,26 @@ app.post("/api/auth/register", (req, res) => {
   }
 
   const users = readUsers();
-  if (users[name]) {
+  let user = users[name];
+  if (user && user.role !== userRoleName) {
+    return res.status(409).json({ message: "该姓名已是系统账号，请使用登录页面设置或输入秘钥。" });
+  }
+  if (user?.secretHash) {
     return res.status(409).json({ message: "该姓名已注册，请直接登录或联系管理员。" });
   }
-
-  const user = {
-    id: createUserId(),
-    name,
-    role: userRoleName,
-    pageAccess: defaultApplicantAccess,
-    secretHash: hashSecret(secret),
-    mustChangeSecret: false,
-    createdAt: new Date().toISOString()
-  };
+  if (!user) {
+    user = {
+      id: createUserId(),
+      name,
+      role: userRoleName,
+      pageAccess: defaultApplicantAccess,
+      createdAt: new Date().toISOString()
+    };
+  }
+  user.secretHash = hashSecret(secret);
+  user.mustChangeSecret = false;
+  user.updatedAt = new Date().toISOString();
+  user.source = "registration";
   users[name] = user;
   writeDeletedUsers(readDeletedUsers().filter((deletedName) => deletedName !== name));
   writeUsers(users);
@@ -1713,7 +1720,6 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     contact,
     applicationDate,
     description,
-    querySecret,
     commitment
   } = req.body;
 
@@ -1750,7 +1756,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     return res.status(400).json({ message: "申报人姓名不在花名册内，不能提交申请。请确认姓名与花名册一致。" });
   }
 
-  const normalizedQuerySecret = String(querySecret || "").trim();
+  const applicantUser = readUsers()[normalizedApplicantName];
   const previousSecretRecord = records.find(
     (record) => record.applicantName === normalizedApplicantName && record.querySecretHash
   );
@@ -1761,22 +1767,8 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     return res.status(409).json({ message: `你已提交过「${cardType}」成就卡申请，请勿重复提交。` });
   }
 
-  if (!normalizedQuerySecret && !previousSecretRecord) {
-    removeUploadedFiles(req.files);
-    return res.status(400).json({ message: "首次申请请设置至少4位查询秘钥，后续申请可不填并沿用。" });
-  }
-
-  if (normalizedQuerySecret && normalizedQuerySecret.length < 4) {
-    removeUploadedFiles(req.files);
-    return res.status(400).json({ message: "查询秘钥至少需要 4 位。" });
-  }
-
-  const effectiveQuerySecretHash = normalizedQuerySecret
-    ? hashSecret(normalizedQuerySecret)
-    : previousSecretRecord.querySecretHash;
-  const effectiveQuerySecretPlain = normalizedQuerySecret
-    ? normalizedQuerySecret
-    : previousSecretRecord.querySecretPlain || "";
+  const effectiveQuerySecretHash = applicantUser?.secretHash || previousSecretRecord?.querySecretHash || "";
+  const effectiveQuerySecretPlain = previousSecretRecord?.querySecretPlain || "";
 
   const nowDate = new Date();
   const now = nowDate.toISOString();
@@ -1791,7 +1783,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
     description: description.trim(),
     querySecretHash: effectiveQuerySecretHash,
     querySecretPlain: effectiveQuerySecretPlain,
-    querySecretInherited: !normalizedQuerySecret,
+    querySecretInherited: Boolean(effectiveQuerySecretHash),
     commitment,
     submittedAt: now,
     reviewStatus: "待评审",
@@ -1835,8 +1827,15 @@ app.post("/api/results/query", (req, res) => {
   }
 
   const secretHash = hashSecret(querySecret);
+  const applicantUser = readUsers()[applicantName];
+  const registeredSecretMatches = Boolean(applicantUser?.secretHash && applicantUser.secretHash === secretHash);
+  const allowLegacySecret = !applicantUser?.secretHash;
   const records = readSubmissions()
-    .filter((record) => record.applicantName === applicantName && record.querySecretHash === secretHash)
+    .filter(
+      (record) =>
+        record.applicantName === applicantName &&
+        (registeredSecretMatches || (allowLegacySecret && record.querySecretHash === secretHash))
+    )
     .map(publicReviewResult);
 
   res.json({ records });

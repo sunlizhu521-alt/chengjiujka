@@ -14,9 +14,6 @@ const positionInput = form.querySelector('input[name="position"]');
 const defaultDepartmentOptions = Array.from(departmentSelect.options)
   .filter((option) => option.value)
   .map((option) => option.value || option.textContent.trim());
-const querySecretField = document.querySelector("#querySecretField");
-const querySecretInput = form.querySelector('input[name="querySecret"]');
-const querySecretHint = document.querySelector("#querySecretHint");
 const attachmentInput = document.querySelector("#attachmentInput");
 const attachmentList = document.querySelector("#attachmentList");
 const uploadCount = document.querySelector("#uploadCount");
@@ -26,8 +23,6 @@ const isGithubPages = window.location.hostname.endsWith("github.io");
 let selectedCardType = "";
 let selectedFiles = [];
 let currentCardFilter = "open";
-let applicantHasHistorySecret = false;
-let secretStatusTimer = null;
 let roster = { departments: [], employees: [] };
 const rosterCacheKey = "chengjiukaRosterCache:v2";
 
@@ -90,8 +85,7 @@ function snapshotApplicationState() {
   });
   return {
     values,
-    files: selectedFiles.slice(),
-    hasHistorySecret: applicantHasHistorySecret
+    files: selectedFiles.slice()
   };
 }
 
@@ -107,10 +101,6 @@ function restoreApplicationState(snapshot) {
   });
   selectedFiles = snapshot.files.slice();
   renderSelectedFiles();
-  updateQuerySecretVisibility(snapshot.hasHistorySecret);
-  if (snapshot.values.querySecret) {
-    querySecretInput.value = snapshot.values.querySecret;
-  }
 }
 
 function renderCardChoices() {
@@ -418,32 +408,6 @@ async function loadRoster() {
   }
 }
 
-function updateQuerySecretVisibility(hasSecret) {
-  applicantHasHistorySecret = hasSecret;
-  querySecretField.hidden = hasSecret;
-  querySecretInput.required = !hasSecret;
-  if (hasSecret) {
-    querySecretInput.value = "";
-    querySecretHint.textContent = "已申请过，系统会自动沿用之前设置的查询秘钥。";
-    return;
-  }
-  querySecretHint.textContent = "首次申请必填；同一姓名后续申请会自动沿用之前设置的查询秘钥。";
-}
-
-async function refreshApplicantSecretStatus() {
-  const applicantName = applicantNameInput.value.trim();
-  if (!applicantName || !hasBackend()) {
-    updateQuerySecretVisibility(false);
-    return false;
-  }
-
-  const response = await fetch(apiUrl(`/api/applicants/secret-status?applicantName=${encodeURIComponent(applicantName)}`));
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.message || "查询申请人状态失败");
-  updateQuerySecretVisibility(Boolean(result.hasSecret));
-  return Boolean(result.hasSecret);
-}
-
 cardFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const snapshot = snapshotApplicationState();
@@ -481,12 +445,6 @@ attachmentList.addEventListener("click", (event) => {
 
 applicantNameInput.addEventListener("input", () => {
   applyRosterInfoForApplicant();
-  clearTimeout(secretStatusTimer);
-  secretStatusTimer = setTimeout(() => {
-    refreshApplicantSecretStatus().catch(() => {
-      updateQuerySecretVisibility(false);
-    });
-  }, 350);
 });
 
 departmentSelect.addEventListener("change", () => {
@@ -529,19 +487,6 @@ form.addEventListener("submit", async (event) => {
     positionInput.dataset.autoFilled = "true";
   }
 
-  try {
-    await refreshApplicantSecretStatus();
-  } catch (error) {
-    setMessage(error.message, "error");
-    return;
-  }
-
-  if (!applicantHasHistorySecret && querySecretInput.value.trim().length < 4) {
-    setMessage("首次申请请设置至少4位查询秘钥。", "error");
-    querySecretInput.focus();
-    return;
-  }
-
   const data = new FormData(form);
   data.delete("attachments");
   data.set("cardType", selectedCardType);
@@ -568,13 +513,10 @@ form.addEventListener("submit", async (event) => {
     dateInput.valueAsDate = new Date();
     applyLoggedInApplicantName({ force: true });
     applyRosterInfoForApplicant();
-    updateQuerySecretVisibility(false);
-    refreshApplicantSecretStatus().catch(() => {});
     selectedFiles = [];
     renderSelectedFiles();
     clearCardSelection();
-    const secretTip = result.querySecretInherited ? "已沿用你之前设置的查询秘钥。" : "请妥善保存查询秘钥。";
-    setMessage(`${result.message} 编号：${result.id}。${secretTip}`, "success");
+    setMessage(`${result.message} 编号：${result.id}。`, "success");
   } catch (error) {
     setMessage(error.message, "error");
   } finally {
@@ -619,8 +561,7 @@ async function initializePage() {
   applyLoggedInApplicantName();
   await Promise.all([
     loadRoster(),
-    loadCardDetails(),
-    refreshApplicantSecretStatus().catch(() => {})
+    loadCardDetails()
   ]);
   renderCardChoices();
 }

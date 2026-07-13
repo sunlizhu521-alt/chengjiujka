@@ -1,6 +1,6 @@
 const pageNavItems = [
   { key: "applicationPage", label: "\u7533\u8bf7\u9875\u9762", href: "./index.html", public: true },
-  { key: "progressQuery", label: "\u8fdb\u5ea6\u67e5\u8be2", href: "./progress.html" },
+  { key: "progressQuery", label: "\u8fdb\u5ea6\u67e5\u8be2", href: "./progress.html", public: true },
   { key: "reviewPage", label: "\u8bc4\u5ba1\u9875\u9762", href: "./admin.html#reviewPanel" },
   { key: "permissionManagement", label: "\u6743\u9650\u7ba1\u7406", href: "./admin.html#permissionPanel", adminOnly: true },
   { key: "resultSummary", label: "\u7ed3\u679c\u6c47\u603b", href: "./summary.html" },
@@ -78,7 +78,14 @@ function renderPageNav() {
   const user = readNavUser();
   if (!user) {
     const isAuthPage = currentNavPageName() === "admin.html";
-    nav.innerHTML = `<a class="admin-link secondary-link ${isAuthPage ? "active-link" : ""}" href="./admin.html">登录 / 注册</a>`;
+    const publicItems = pageNavItems.filter((item) => item.public);
+    nav.innerHTML = `${publicItems
+      .map((item) => {
+        const classNames = ["admin-link", "secondary-link"];
+        if (isCurrentNavItem(item.href)) classNames.push("active-link");
+        return `<a class="${classNames.join(" ")}" href="${item.href}">${item.label}</a>`;
+      })
+      .join("")}<a class="admin-link secondary-link ${isAuthPage ? "active-link" : ""}" href="./admin.html">登录 / 注册</a>`;
     return;
   }
 
