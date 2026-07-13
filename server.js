@@ -1204,6 +1204,10 @@ function deleteSubmissionRecord(id) {
   return removedRecord;
 }
 
+function canDeleteAnyStatusSubmission(user) {
+  return user && user.name === adminName && user.role === "admin";
+}
+
 function uploadedFileInfo(file) {
   return {
     originalName: normalizeOriginalName(file.originalname),
@@ -2132,7 +2136,7 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
 });
 
 app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
-  if (req.authUser.name !== adminName) {
+  if (!canDeleteAnyStatusSubmission(req.authUser)) {
     return res.status(403).json({ message: "只有管理员孙立柱可以批量删除申请记录。" });
   }
 
@@ -2162,7 +2166,7 @@ app.post("/api/submissions/bulk-delete", requireAdmin, (req, res) => {
 });
 
 function handleDeleteSubmissionRequest(req, res) {
-  if (req.authUser.name !== adminName) {
+  if (!canDeleteAnyStatusSubmission(req.authUser)) {
     return res.status(403).json({ message: "只有管理员孙立柱可以删除申请记录。" });
   }
 

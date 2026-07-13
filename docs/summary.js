@@ -50,7 +50,7 @@ function canViewSummary(user) {
   return user && (user.role === "admin" || access.includes("resultSummary") || access.includes("summary"));
 }
 
-function canDeleteRecords(user = currentUser) {
+function canDeleteAnyStatusRecords(user = currentUser) {
   return user && user.name === "孙立柱" && user.role === "admin";
 }
 
@@ -142,7 +142,7 @@ function renderSummary(records) {
 function updateSelectionState(records = filteredRecords()) {
   const visibleIds = records.map((item) => item.id).filter(Boolean);
   const selectedVisibleCount = visibleIds.filter((id) => selectedRecordIds.has(id)).length;
-  const canBulkDelete = canDeleteRecords();
+  const canBulkDelete = canDeleteAnyStatusRecords();
 
   if (summarySelectAll) {
     summarySelectAll.disabled = !canBulkDelete || visibleIds.length === 0;
@@ -172,7 +172,7 @@ function renderTable() {
     .map((item, index) => {
       const status = normalizeReviewStatus(item.reviewStatus);
       const checked = selectedRecordIds.has(item.id) ? "checked" : "";
-      const disabled = canDeleteRecords() ? "" : "disabled";
+      const disabled = canDeleteAnyStatusRecords() ? "" : "disabled";
       return `
         <tr>
           <td data-label="选择" class="summary-select-cell">
@@ -196,7 +196,7 @@ function renderTable() {
           <td data-label="承诺确认">${escapeHtml(item.commitment || "")}</td>
           <td data-label="操作">
             ${
-              canDeleteRecords()
+              canDeleteAnyStatusRecords()
                 ? `<button type="button" class="delete-summary-record-btn danger-button" data-id="${escapeHtml(item.id)}">删除</button>`
                 : ""
             }
@@ -290,7 +290,7 @@ loadBtn.addEventListener("click", loadRecords);
 
 if (summarySelectAll) {
   summarySelectAll.addEventListener("change", () => {
-    if (!canDeleteRecords()) return;
+    if (!canDeleteAnyStatusRecords()) return;
     const records = filteredRecords();
     if (summarySelectAll.checked) {
       records.forEach((item) => selectedRecordIds.add(item.id));
@@ -303,7 +303,7 @@ if (summarySelectAll) {
 
 if (bulkDeleteBtn) {
   bulkDeleteBtn.addEventListener("click", async () => {
-    if (!canDeleteRecords()) {
+    if (!canDeleteAnyStatusRecords()) {
       setSummaryMessage("只有孙立柱管理员可以批量删除申请记录。", "error");
       return;
     }
@@ -341,7 +341,7 @@ if (bulkDeleteBtn) {
 summaryBody.addEventListener("click", async (event) => {
   const button = event.target.closest(".delete-summary-record-btn");
   if (!button) return;
-  if (!canDeleteRecords()) {
+  if (!canDeleteAnyStatusRecords()) {
     setSummaryMessage("只有孙立柱管理员可以删除申请记录。", "error");
     return;
   }
@@ -373,7 +373,7 @@ summaryBody.addEventListener("click", async (event) => {
 summaryBody.addEventListener("change", (event) => {
   const checkbox = event.target.closest(".summary-record-checkbox");
   if (!checkbox) return;
-  if (!canDeleteRecords()) {
+  if (!canDeleteAnyStatusRecords()) {
     checkbox.checked = false;
     setSummaryMessage("只有孙立柱管理员可以选择并删除申请记录。", "error");
     return;

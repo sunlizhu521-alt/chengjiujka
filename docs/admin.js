@@ -119,6 +119,10 @@ function isRootAdminUser(user = currentUser) {
   return user && user.name === "孙立柱" && user.role === "admin";
 }
 
+function canDeleteAnyStatusSubmission(user = currentUser) {
+  return isRootAdminUser(user);
+}
+
 function hasPageAccess(page, user = currentUser) {
   if (isAdminUser(user)) return true;
   return Array.isArray(user?.pageAccess) && user.pageAccess.includes(page);
@@ -736,7 +740,7 @@ function renderRecords() {
   const autoScore = detail.score || "";
   const attachments = renderAttachmentPreviewList(item.attachments || [], item.id, "apply");
   const currentStatus = normalizeReviewStatus(item.reviewStatus);
-  const deleteButton = isRootAdminUser()
+  const deleteButton = canDeleteAnyStatusSubmission()
     ? `<button type="button" class="delete-submission-record-btn danger-button" data-id="${escapeHtml(item.id)}">删除申请</button>`
     : "";
 
@@ -1041,7 +1045,7 @@ recordsEl.addEventListener("submit", async (event) => {
 recordsEl.addEventListener("click", (event) => {
   const deleteButton = event.target.closest(".delete-submission-record-btn");
   if (deleteButton) {
-    if (!isRootAdminUser()) {
+    if (!canDeleteAnyStatusSubmission()) {
       setAdminMessage("只有孙立柱管理员可以删除申请记录。", "error");
       return;
     }
