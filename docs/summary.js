@@ -89,6 +89,10 @@ function setSummaryMessage(text, type) {
   summaryMessage.className = `message ${type || ""}`;
 }
 
+function showSuccessDialog(text) {
+  window.alert(text);
+}
+
 function filteredRecords() {
   const card = cardFilter.value;
   const status = statusFilter.value;
@@ -349,7 +353,9 @@ if (bulkDeleteBtn) {
       selectedRecordIds.clear();
       renderTable();
       if (!Array.isArray(result.records)) await refreshRecordsAfterDelete();
-      setSummaryMessage(`删除成功，已删除 ${deletedIds.size} 条记录。`, "success");
+      const successMessage = `\u5220\u9664\u6210\u529f\uff0c\u5df2\u5220\u9664 ${deletedIds.size} \u6761\u8bb0\u5f55\u3002`;
+      setSummaryMessage(successMessage, "success");
+      showSuccessDialog(successMessage);
     } catch (error) {
       setSummaryMessage(error.message, "error");
       updateSelectionState();
@@ -383,7 +389,8 @@ summaryBody.addEventListener("click", async (event) => {
     selectedRecordIds.delete(id);
     renderTable();
     if (!Array.isArray(result.records)) await refreshRecordsAfterDelete();
-    setSummaryMessage("删除成功", "success");
+    setSummaryMessage("\u5220\u9664\u6210\u529f", "success");
+    showSuccessDialog("\u5220\u9664\u6210\u529f");
   } catch (error) {
     setSummaryMessage(error.message, "error");
     button.disabled = false;

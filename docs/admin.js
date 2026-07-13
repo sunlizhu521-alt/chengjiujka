@@ -98,6 +98,10 @@ function setAdminMessage(text, type) {
   adminMessage.className = `message admin-message ${type || ""}`;
 }
 
+function showSuccessDialog(text) {
+  window.alert(text);
+}
+
 function setLoginMessage(text, type) {
   loginMessage.textContent = text;
   loginMessage.className = `message ${type || ""}`;
@@ -1087,7 +1091,8 @@ recordsEl.addEventListener("click", (event) => {
         if (currentRecordIndex >= records.length) currentRecordIndex = Math.max(records.length - 1, 0);
         renderRecords();
         if (!Array.isArray(result.records)) await refreshRecordsAfterDelete();
-        setAdminMessage("删除成功", "success");
+        setAdminMessage("\u5220\u9664\u6210\u529f", "success");
+        showSuccessDialog("\u5220\u9664\u6210\u529f");
       })
       .catch((error) => {
         setAdminMessage(error.message, "error");
