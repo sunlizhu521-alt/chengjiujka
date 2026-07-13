@@ -9,6 +9,7 @@ let coinIntro = { title: "成就币介绍", content: "", updatedAt: "", updatedB
 const reviewMembers = ["孙立柱", "王斌", "惠李伟", "蒋炳兰", "任蒨"];
 const pageLabels = {
   applicationPage: "申请页面",
+  progressQuery: "进度查询",
   passed: "成就卡榜单",
   reviewPage: "评审页面",
   permissionManagement: "权限管理",

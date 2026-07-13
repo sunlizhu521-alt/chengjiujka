@@ -40,6 +40,7 @@ const reviewStatuses = new Set(["通过", "不通过"]);
 const userRoleName = "user";
 const pagePermissions = [
   { key: "applicationPage", label: "申请页面" },
+  { key: "progressQuery", label: "进度查询" },
   { key: "passed", label: "成就卡榜单" },
   { key: "reviewPage", label: "评审页面" },
   { key: "permissionManagement", label: "权限管理" },
@@ -57,7 +58,7 @@ const legacyPageKeyMap = {
   cardConfig: "infoConfig"
 };
 const defaultReviewerAccess = ["applicationPage", "reviewPage", "coinIntro"];
-const defaultApplicantAccess = ["applicationPage", "passed", "coinIntro"];
+const defaultApplicantAccess = ["applicationPage", "progressQuery", "coinIntro", "passed"];
 
 function loadDefaultCardDetails() {
   const raw = fs.readFileSync(path.join(publicDir, "card-data.js"), "utf8");
@@ -1166,6 +1167,12 @@ function localDateString(date = new Date()) {
 function publicReviewResult(record) {
   const normalizedRecord = normalizeAttachmentNames(record);
   const isPublished = Boolean(normalizedRecord.resultPublished);
+  const hasReviewActivity =
+    Object.values(normalizedRecord.reviewVotes || {}).some((vote) => Boolean(vote?.status)) ||
+    (normalizedRecord.feedbackFiles || []).length > 0 ||
+    normalizedRecord.reviewStatus === "通过" ||
+    normalizedRecord.reviewStatus === "不通过";
+  const progressStatus = isPublished ? "已完成" : hasReviewActivity ? "评审中" : "待评审";
 
   if (!isPublished) {
     return {
@@ -1173,9 +1180,11 @@ function publicReviewResult(record) {
       cardType: normalizedRecord.cardType,
       applicantName: normalizedRecord.applicantName,
       applicationDate: normalizedRecord.applicationDate,
-      reviewStatus: "评审结果暂未发布",
+      progressStatus,
+      resultPublished: false,
+      reviewStatus: "",
       score: "",
-      reviewComment: "评审小组正在整理最终意见，请等待评审组确认展示。",
+      reviewComment: "",
       reviewDate: ""
     };
   }
@@ -1185,6 +1194,8 @@ function publicReviewResult(record) {
     cardType: normalizedRecord.cardType,
     applicantName: normalizedRecord.applicantName,
     applicationDate: normalizedRecord.applicationDate,
+    progressStatus,
+    resultPublished: true,
     reviewStatus: normalizedRecord.reviewStatus,
     score: normalizedRecord.score,
     reviewComment: normalizedRecord.finalPublicComment || "暂无最终评审意见。",
@@ -1565,7 +1576,7 @@ app.post("/api/auth/register", (req, res) => {
   writeDeletedUsers(readDeletedUsers().filter((deletedName) => deletedName !== name));
   writeUsers(users);
 
-  res.json({ user: publicUser(user), message: "注册成功，已开通申请页面、成就币介绍和成就卡榜单。" });
+  res.json({ user: publicUser(user), message: "注册成功，已开通申请页面、进度查询、成就币介绍和成就卡榜单。" });
 });
 
 app.get("/api/auth/users", requireAdmin, (req, res) => {
