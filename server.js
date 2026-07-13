@@ -477,6 +477,40 @@ function writeDeletedUsers(names) {
   writeJsonAtomic(deletedUsersFile, [...new Set(names.map((name) => String(name || "").trim()).filter(Boolean))]);
 }
 
+function ensureSubmissionApplicantUser(record) {
+  const name = String(record?.applicantName || "").trim();
+  if (!name) return null;
+
+  const users = readUsers();
+  let user = users[name];
+  let created = false;
+  if (!user) {
+    user = {
+      id: createUserId(),
+      name,
+      role: userRoleName,
+      pageAccess: defaultApplicantAccess,
+      secretHash: "",
+      mustChangeSecret: false,
+      createdAt: record.submittedAt || new Date().toISOString(),
+      source: "submission"
+    };
+    users[name] = user;
+    created = true;
+  }
+
+  const deletedUsers = readDeletedUsers();
+  const restored = deletedUsers.includes(name);
+  if (restored) {
+    writeDeletedUsers(deletedUsers.filter((deletedName) => deletedName !== name));
+  }
+  if (created) {
+    writeUsers(users);
+  }
+
+  return { user, created, restored };
+}
+
 function addSubmissionApplicantsToUsers(users) {
   if (!fs.existsSync(submissionsFile)) return false;
 
@@ -1542,6 +1576,20 @@ app.get("/api/auth/users", requireAdmin, (req, res) => {
   });
 });
 
+app.post("/api/auth/users/:name/restore-from-submission", requireAdmin, (req, res) => {
+  const targetName = String(req.params.name || "").trim();
+  const record = readSubmissions().find((item) => String(item.applicantName || "").trim() === targetName);
+  if (!record) {
+    return res.status(404).json({ message: "未找到该用户的申请记录。" });
+  }
+
+  const result = ensureSubmissionApplicantUser(record);
+  res.json({
+    user: publicUser(result.user),
+    message: result.created || result.restored ? "用户已恢复到权限管理。" : "用户已在权限管理中。"
+  });
+});
+
 app.patch("/api/auth/users/:name/access", requireAdmin, (req, res) => {
   const targetName = String(req.params.name || "").trim();
   const users = readUsers();
@@ -1751,6 +1799,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
 
   records.unshift(record);
   writeSubmissions(records);
+  ensureSubmissionApplicantUser(record);
 
   notifyDingTalk("提交成就卡申请", [
     `申报人：${record.applicantName}`,
