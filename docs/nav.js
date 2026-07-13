@@ -76,14 +76,14 @@ function renderPageNav() {
   if (!nav) return;
 
   const user = readNavUser();
+  if (!user) {
+    const isAuthPage = currentNavPageName() === "admin.html";
+    nav.innerHTML = `<a class="admin-link secondary-link ${isAuthPage ? "active-link" : ""}" href="./admin.html">登录 / 注册</a>`;
+    return;
+  }
+
   const access = new Set(normalizedNavAccess(user));
-  const items = pageNavItems.filter((item) => {
-    if (!user) return true;
-    if (item.key === "passed") return true;
-    if (item.public) return true;
-    if (item.adminOnly) return isNavAdmin(user);
-    return access.has(item.key);
-  });
+  const items = pageNavItems.filter((item) => access.has(item.key));
 
   nav.innerHTML = items
     .map((item) => {
