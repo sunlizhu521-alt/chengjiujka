@@ -90,7 +90,19 @@ function setSummaryMessage(text, type) {
 }
 
 function showSuccessDialog(text) {
-  window.alert(text);
+  const previous = document.querySelector(".success-toast");
+  if (previous) previous.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "success-toast";
+  toast.setAttribute("role", "status");
+  toast.textContent = text;
+  document.body.appendChild(toast);
+  window.setTimeout(() => toast.classList.add("is-visible"), 10);
+  window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    window.setTimeout(() => toast.remove(), 180);
+  }, 1800);
 }
 
 function filteredRecords() {
