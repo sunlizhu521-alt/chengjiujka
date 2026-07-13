@@ -1069,7 +1069,7 @@ recordsEl.addEventListener("click", (event) => {
         const records = filteredRecords();
         if (currentRecordIndex >= records.length) currentRecordIndex = Math.max(records.length - 1, 0);
         renderRecords();
-        setAdminMessage(result.message || "申请记录已删除。", "success");
+        setAdminMessage("删除成功", "success");
       })
       .catch((error) => {
         setAdminMessage(error.message, "error");

@@ -330,7 +330,7 @@ if (bulkDeleteBtn) {
       allRecords = allRecords.filter((item) => !deletedIds.has(item.id));
       selectedRecordIds.clear();
       renderTable();
-      setSummaryMessage(result.message || "申请记录已批量删除。", "success");
+      setSummaryMessage(`删除成功，已删除 ${deletedIds.size} 条记录。`, "success");
     } catch (error) {
       setSummaryMessage(error.message, "error");
       updateSelectionState();
@@ -363,7 +363,7 @@ summaryBody.addEventListener("click", async (event) => {
     allRecords = allRecords.filter((item) => item.id !== id);
     selectedRecordIds.delete(id);
     renderTable();
-    setSummaryMessage(result.message || "申请记录已删除。", "success");
+    setSummaryMessage("删除成功", "success");
   } catch (error) {
     setSummaryMessage(error.message, "error");
     button.disabled = false;
