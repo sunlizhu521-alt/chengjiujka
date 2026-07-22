@@ -41,10 +41,41 @@ jobs:
             cd /home/ubuntu/zhuge-ai-lab/chengjiujka
             PROJECT_NAME=$(basename "$PWD")
             mkdir -p ~/backups/$PROJECT_NAME
+
+            json_count() {
+              node -e '
+                const fs = require("fs");
+                const file = process.argv[1];
+                const expected = process.argv[2];
+                if (!fs.existsSync(file)) { process.stdout.write("0"); process.exit(0); }
+                const value = JSON.parse(fs.readFileSync(file, "utf8"));
+                if (expected === "array" && !Array.isArray(value)) throw new Error(`${file} must be an array`);
+                if (expected === "object" && (!value || Array.isArray(value) || typeof value !== "object")) throw new Error(`${file} must be an object`);
+                process.stdout.write(String(Array.isArray(value) ? value.length : Object.keys(value).length));
+              ' "$1" "$2"
+            }
+
+            BASELINE_SUBMISSIONS=$(json_count data/submissions.json array)
+            BASELINE_USERS=$(json_count data/users.json object)
+            echo "Data baseline: submissions=$BASELINE_SUBMISSIONS users=$BASELINE_USERS"
+
             if [ -d data ]; then
-              tar -czf ~/backups/$PROJECT_NAME/data-$(date +%Y%m%d-%H%M%S).tar.gz data
-              ls -lh ~/backups/$PROJECT_NAME | tail -n 5
+              BACKUP_FILE=~/backups/$PROJECT_NAME/data-$(date +%Y%m%d-%H%M%S).tar.gz
+              tar -czf "$BACKUP_FILE" data
+              test -s "$BACKUP_FILE"
+              tar -tzf "$BACKUP_FILE" >/dev/null
+
+              VERIFY_DIR=$(mktemp -d)
+              tar -xzf "$BACKUP_FILE" -C "$VERIFY_DIR"
+              BACKUP_SUBMISSIONS=$(json_count "$VERIFY_DIR/data/submissions.json" array)
+              BACKUP_USERS=$(json_count "$VERIFY_DIR/data/users.json" object)
+              rm -rf "$VERIFY_DIR"
+              test "$BACKUP_SUBMISSIONS" = "$BASELINE_SUBMISSIONS"
+              test "$BACKUP_USERS" = "$BASELINE_USERS"
+              echo "Backup verified: $BACKUP_FILE submissions=$BACKUP_SUBMISSIONS users=$BACKUP_USERS"
+              ls -lh "$BACKUP_FILE"
             fi
+
             tar -xzf /tmp/chengjiujka.tar.gz
             if [ -f /tmp/dingtalk-config.json ]; then
               mkdir -p data
@@ -52,6 +83,24 @@ jobs:
               chmod 600 data/dingtalk-config.json
             fi
             npm install --production
-            pm2 restart chengjiujka
+
+            if pm2 describe chengjiujka >/dev/null 2>&1; then
+              pm2 restart ecosystem.config.js --only chengjiujka --update-env
+            else
+              pm2 start ecosystem.config.js --only chengjiujka
+            fi
             pm2 save
+
+            if ! systemctl is-enabled --quiet pm2-ubuntu; then
+              sudo env PATH="$PATH" pm2 startup systemd -u ubuntu --hp /home/ubuntu
+              pm2 save
+            fi
+
+            curl -fsS --retry 15 --retry-delay 2 --retry-connrefused http://127.0.0.1:4005/api/health
+            POST_SUBMISSIONS=$(json_count data/submissions.json array)
+            POST_USERS=$(json_count data/users.json object)
+            test "$POST_SUBMISSIONS" -ge "$BASELINE_SUBMISSIONS"
+            test "$POST_USERS" -ge "$BASELINE_USERS"
+            echo "Data verified after deploy: submissions=$POST_SUBMISSIONS users=$POST_USERS"
+            pm2 status chengjiujka
           REMOTE
