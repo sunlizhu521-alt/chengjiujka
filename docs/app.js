@@ -17,11 +17,16 @@ const defaultDepartmentOptions = Array.from(departmentSelect.options)
 const attachmentInput = document.querySelector("#attachmentInput");
 const attachmentList = document.querySelector("#attachmentList");
 const uploadCount = document.querySelector("#uploadCount");
+const editModeBanner = document.querySelector("#editModeBanner");
+const editModeId = document.querySelector("#editModeId");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
+const resubmitStorageKey = "chengjiukaResubmitDraft";
 let selectedCardType = "";
 let selectedFiles = [];
+let existingAttachments = [];
+let editContext = null;
 let currentCardFilter = "open";
 let roster = { departments: [], employees: [] };
 const rosterCacheKey = "chengjiukaRosterCache:v2";
@@ -37,6 +42,14 @@ function readStoredUser() {
 }
 
 function applyLoggedInApplicantName() {
+  if (editContext?.applicantName) {
+    applicantNameInput.value = editContext.applicantName;
+    applicantNameInput.readOnly = true;
+    applicantNameInput.setAttribute("aria-readonly", "true");
+    applicantNameInput.title = "重新提交时不能更改申报人姓名";
+    return;
+  }
+
   const user = readStoredUser();
   const userName = String(user?.name || "").trim();
   if (!userName) {
@@ -251,22 +264,37 @@ function fileKey(file) {
 }
 
 function renderSelectedFiles() {
-  uploadCount.textContent = `已选 ${selectedFiles.length}/10`;
+  const total = existingAttachments.length + selectedFiles.length;
+  uploadCount.textContent = `已选 ${total}/10`;
 
-  if (selectedFiles.length === 0) {
+  if (total === 0) {
     attachmentList.innerHTML = '<p class="empty-files">尚未选择材料。点击上方区域添加文件。</p>';
     return;
   }
 
   attachmentList.innerHTML = `
-    <strong>已选材料</strong>
+    <strong>${editContext ? "本次重新提交的材料" : "已选材料"}</strong>
     <ul>
-      ${selectedFiles
+      ${existingAttachments
         .map(
           (file, index) => `
             <li>
               <span class="file-index">${index + 1}</span>
-              <span class="file-name">${escapeHtml(file.name)} <em>${escapeHtml(formatFileSize(file.size))}</em></span>
+              <span class="file-name">
+                ${escapeHtml(file.originalName || file.filename || "原材料")}
+                <em>原申请材料 · ${escapeHtml(formatFileSize(Number(file.size || 0)))}</em>
+              </span>
+              <button type="button" class="remove-existing-file-btn" data-existing-file-index="${index}">移除</button>
+            </li>
+          `
+        )
+        .join("")}
+      ${selectedFiles
+        .map(
+          (file, index) => `
+            <li>
+              <span class="file-index">${existingAttachments.length + index + 1}</span>
+              <span class="file-name">${escapeHtml(file.name)} <em>新材料 · ${escapeHtml(formatFileSize(file.size))}</em></span>
               <button type="button" class="remove-file-btn" data-file-index="${index}">移除</button>
             </li>
           `
@@ -279,9 +307,49 @@ function renderSelectedFiles() {
 function addSelectedFiles(files) {
   const existingKeys = new Set(selectedFiles.map(fileKey));
   const incoming = Array.from(files).filter((file) => !existingKeys.has(fileKey(file)));
-  selectedFiles = selectedFiles.concat(incoming).slice(0, 10);
+  const available = Math.max(10 - existingAttachments.length, 0);
+  selectedFiles = selectedFiles.concat(incoming).slice(0, available);
   attachmentInput.value = "";
   renderSelectedFiles();
+}
+
+function readResubmitDraft() {
+  const editId = new URLSearchParams(window.location.search).get("edit");
+  if (!editId) return null;
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(resubmitStorageKey) || "null");
+    return draft?.id === editId && draft?.resubmitToken && draft?.application ? draft : null;
+  } catch {
+    return null;
+  }
+}
+
+function applyResubmitDraft() {
+  if (!editContext) return;
+  const application = editContext.application || {};
+  selectedCardType = editContext.cardType;
+  existingAttachments = Array.isArray(application.attachments) ? application.attachments.slice() : [];
+  applicantNameInput.value = editContext.applicantName || "";
+  departmentSelect.value = application.department || "";
+  positionInput.value = application.position || "";
+  form.elements.contact.value = application.contact || "";
+  form.elements.applicationDate.value = application.applicationDate || "";
+  form.elements.description.value = application.description || "";
+  form.elements.commitment.checked = Boolean(application.commitment);
+  applyLoggedInApplicantName();
+  renderCardChoices();
+  selectCard(editContext.cardType);
+  renderSelectedFiles();
+
+  cardFilterButtons.forEach((button) => {
+    button.disabled = true;
+  });
+  currentCardButtons().forEach((button) => {
+    button.disabled = button.dataset.cardType !== editContext.cardType;
+  });
+  editModeBanner.hidden = false;
+  editModeId.textContent = editContext.id;
+  form.querySelector('button[type="submit"]').textContent = "重新提交申请";
 }
 
 function hasBackend() {
@@ -435,6 +503,12 @@ attachmentInput.addEventListener("change", () => {
 });
 
 attachmentList.addEventListener("click", (event) => {
+  if (event.target.classList.contains("remove-existing-file-btn")) {
+    const index = Number(event.target.dataset.existingFileIndex);
+    existingAttachments = existingAttachments.filter((file, fileIndex) => fileIndex !== index);
+    renderSelectedFiles();
+    return;
+  }
   if (!event.target.classList.contains("remove-file-btn")) {
     return;
   }
@@ -489,7 +563,11 @@ form.addEventListener("submit", async (event) => {
 
   const data = new FormData(form);
   data.delete("attachments");
-  data.set("cardType", selectedCardType);
+  data.set("cardType", editContext?.cardType || selectedCardType);
+  if (editContext) {
+    data.set("resubmitToken", editContext.resubmitToken);
+    data.set("retainedAttachmentNames", JSON.stringify(existingAttachments.map((file) => file.filename)));
+  }
   selectedFiles.forEach((file) => {
     data.append("attachments", file, file.name);
   });
@@ -501,13 +579,24 @@ form.addEventListener("submit", async (event) => {
 
   try {
     const reviewToken = localStorage.getItem("chengjiukaReviewToken") || "";
-    const response = await fetch(apiUrl("/api/submissions"), {
-      method: "POST",
+    const endpoint = editContext
+      ? `/api/submissions/${encodeURIComponent(editContext.id)}/resubmit`
+      : "/api/submissions";
+    const response = await fetch(apiUrl(endpoint), {
+      method: editContext ? "PATCH" : "POST",
       headers: reviewToken ? { "x-review-token": reviewToken } : {},
       body: data
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "提交失败");
+
+    if (editContext) {
+      sessionStorage.removeItem(resubmitStorageKey);
+      submitBtn.textContent = "已重新提交";
+      submitBtn.disabled = true;
+      setMessage(`${result.message} 编号：${result.id}。`, "success");
+      return;
+    }
 
     form.reset();
     dateInput.valueAsDate = new Date();
@@ -520,8 +609,15 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     setMessage(error.message, "error");
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "提交申请";
+    if (!editContext || !sessionStorage.getItem(resubmitStorageKey)) {
+      if (!editContext) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交申请";
+      }
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "重新提交申请";
+    }
   }
 });
 
@@ -557,6 +653,10 @@ resultQueryForm.addEventListener("submit", async (event) => {
 });
 
 async function initializePage() {
+  editContext = readResubmitDraft();
+  if (new URLSearchParams(window.location.search).get("edit") && !editContext) {
+    setMessage("修改凭证不存在或已失效，请返回进度查询重新验证。", "error");
+  }
   renderSelectedFiles();
   applyLoggedInApplicantName();
   await Promise.all([
@@ -564,6 +664,7 @@ async function initializePage() {
     loadCardDetails()
   ]);
   renderCardChoices();
+  applyResubmitDraft();
 }
 
 initializePage();

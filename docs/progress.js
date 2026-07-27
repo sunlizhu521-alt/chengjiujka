@@ -5,6 +5,8 @@ const applicantNameInput = progressForm.elements.applicantName;
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const isGithubPages = window.location.hostname.endsWith("github.io");
+const resubmitStorageKey = "chengjiukaResubmitDraft";
+let latestRecords = [];
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -44,6 +46,7 @@ function applyLoggedInName() {
 function progressClass(status) {
   if (status === "已完成") return "completed";
   if (status === "评审中") return "reviewing";
+  if (status === "待修改") return "changes-requested";
   return "pending";
 }
 
@@ -52,7 +55,43 @@ function normalizeFinalStatus(status) {
   return status || "";
 }
 
+function fileUrl(file) {
+  return apiUrl(`/files/${encodeURIComponent(file.filename || "")}`);
+}
+
+function renderChangeRequest(item) {
+  if (item.progressStatus !== "待修改" || !item.changeRequest) return "";
+  const files = Array.isArray(item.changeRequest.files) ? item.changeRequest.files : [];
+  const fileList = files.length
+    ? `
+      <ul class="change-request-files">
+        ${files
+          .map(
+            (file) => `
+              <li>
+                <a href="${escapeHtml(fileUrl(file))}" target="_blank" rel="noopener">
+                  ${escapeHtml(file.originalName || file.filename || "反馈文件")}
+                </a>
+              </li>
+            `
+          )
+          .join("")}
+      </ul>
+    `
+    : '<p class="empty-files">本次驳回没有附加反馈文件。</p>';
+
+  return `
+    <section class="applicant-change-request">
+      <h3>需要修改后重新提交</h3>
+      <p><strong>驳回原因：</strong>${escapeHtml(item.changeRequest.reason || "请按评审要求修改申请。")}</p>
+      ${fileList}
+      <button type="button" class="start-resubmit-btn" data-id="${escapeHtml(item.id)}">修改并重新提交</button>
+    </section>
+  `;
+}
+
 function renderRecords(records) {
+  latestRecords = records;
   if (!records.length) {
     progressResults.innerHTML = '<p class="empty-files">未查询到匹配的申请记录，请核对姓名和秘钥。</p>';
     return;
@@ -81,11 +120,35 @@ function renderRecords(records) {
           <div><span>评审日期</span>${escapeHtml(item.resultPublished ? item.reviewDate || "未填写" : "暂未完成")}</div>
           <div><span>成就卡分值</span>${escapeHtml(item.resultPublished && item.score ? `${item.score}分` : "暂未确定")}</div>
         </div>
+        ${renderChangeRequest(item)}
         ${finalBlock}
       </article>
     `;
   }).join("");
 }
+
+progressResults.addEventListener("click", (event) => {
+  const button = event.target.closest(".start-resubmit-btn");
+  if (!button) return;
+  const record = latestRecords.find((item) => item.id === button.dataset.id);
+  if (!record?.resubmitToken || !record.editableApplication) {
+    progressMessage.textContent = "修改凭证不存在，请重新查询后再试。";
+    progressMessage.className = "message error";
+    return;
+  }
+
+  sessionStorage.setItem(
+    resubmitStorageKey,
+    JSON.stringify({
+      id: record.id,
+      cardType: record.cardType,
+      applicantName: record.applicantName,
+      resubmitToken: record.resubmitToken,
+      application: record.editableApplication
+    })
+  );
+  window.location.href = `./index.html?edit=${encodeURIComponent(record.id)}`;
+});
 
 progressForm.addEventListener("submit", async (event) => {
   event.preventDefault();

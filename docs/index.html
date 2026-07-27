@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡申请</title>
-    <link rel="stylesheet" href="./styles.css?v=20260703-01" />
+    <link rel="stylesheet" href="./styles.css?v=20260728-01" />
   </head>
   <body>
     <header class="topbar nav-only">
@@ -27,6 +27,10 @@
       </section>
 
       <form id="applicationForm" class="panel form-panel">
+        <div id="editModeBanner" class="edit-mode-banner" hidden>
+          <strong>正在修改被驳回的申请</strong>
+          <span>申请编号：<b id="editModeId"></b>。重新提交后将继续使用原申请编号。</span>
+        </div>
         <h2>二、基础信息</h2>
         <div class="grid">
           <label class="field">
@@ -122,6 +126,6 @@
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./card-data.js?v=20260611-24" defer></script>
     <script src="./nav.js?v=20260713-03" defer></script>
-    <script src="./app.js?v=20260713-02" defer></script>
+    <script src="./app.js?v=20260728-01" defer></script>
   </body>
 </html>

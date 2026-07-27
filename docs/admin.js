@@ -257,11 +257,17 @@ function normalizeReviewStatus(status) {
   return status || "待评审";
 }
 
+function displayReviewStatus(item) {
+  if (item?.changeRequest?.status === "requested") return "待修改";
+  return normalizeReviewStatus(item?.reviewStatus);
+}
+
 function badgeClass(status) {
-  status = normalizeReviewStatus(status);
-  if (status === "通过") return "badge pass";
-  if (status === "不通过") return "badge reject";
-  if (status === "待评审") return "badge pending";
+  const normalized = normalizeReviewStatus(status);
+  if (normalized === "通过") return "badge pass";
+  if (normalized === "不通过") return "badge reject";
+  if (normalized === "待评审") return "badge pending";
+  if (status === "待修改") return "badge changes-requested";
   return "badge";
 }
 
@@ -591,7 +597,7 @@ function filteredRecords() {
 
   return allRecords.filter((item) => {
     const matchesCard = !card || item.cardType === card;
-    const matchesStatus = !status || normalizeReviewStatus(item.reviewStatus) === status;
+    const matchesStatus = !status || displayReviewStatus(item) === status;
     const haystack = [
       item.cardType,
       item.applicantName,
@@ -609,13 +615,15 @@ function filteredRecords() {
 
 function renderSummary(records) {
   const total = records.length;
-  const pending = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "待评审").length;
+  const pending = records.filter((item) => displayReviewStatus(item) === "待评审").length;
+  const changesRequested = records.filter((item) => displayReviewStatus(item) === "待修改").length;
   const passed = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "通过").length;
   const rejected = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "不通过").length;
 
   summaryRow.innerHTML = [
     ["当前记录", total],
     ["待评审", pending],
+    ["待修改", changesRequested],
     ["已通过", passed],
     ["不通过", rejected]
   ]
@@ -676,6 +684,15 @@ function renderFeedbackFiles(item) {
 }
 
 function renderReviewForm(item) {
+  if (item.changeRequest?.status === "requested") {
+    return `
+      <section class="review-feedback">
+        <h3>评审反馈</h3>
+        <p class="empty-files">该申请已驳回，正在等待申报人修改并重新提交，暂不能评审。</p>
+      </section>
+    `;
+  }
+
   const filesReady = (item.feedbackFiles || []).length > 0;
   const myVote = ((item.reviewVotes || {})[currentUser.name] || {});
   const hasSubmittedVote = Boolean(myVote.status);
@@ -710,8 +727,45 @@ function renderReviewForm(item) {
   `;
 }
 
+function renderChangeRequest(item) {
+  if (!isRootAdminUser()) return "";
+  const request = item.changeRequest || {};
+
+  if (request.status === "requested") {
+    return `
+      <section class="change-request-panel is-active">
+        <div class="section-title-row">
+          <strong>已驳回，等待申报人修改</strong>
+          <span>${escapeHtml(formatDate(request.requestedAt) || "")}</span>
+        </div>
+        <p><strong>驳回原因</strong>${escapeHtml(request.reason || "未填写")}</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="change-request-panel">
+      <h3>驳回修改</h3>
+      <p>驳回后，申报人可在进度查询中查看原因和反馈文件，修改原申请后重新提交。</p>
+      <form class="change-request-form">
+        <label class="field">
+          <span>驳回原因 <b>*</b></span>
+          <textarea name="reason" rows="3" required placeholder="请明确说明需要修改或补充的内容。"></textarea>
+        </label>
+        <label class="feedback-upload-box">
+          <input type="file" name="feedbackFiles" multiple />
+          <span>上传反馈文件（选填）</span>
+          <small>支持图片和任意文件，最多 10 个，单个文件最大 50MB。</small>
+        </label>
+        <button type="submit" class="danger-button">驳回申请</button>
+      </form>
+    </section>
+  `;
+}
+
 function renderPublicResultConfirm(item) {
   if (!currentUser || currentUser.role !== "admin") return "";
+  if (item.changeRequest?.status === "requested") return "";
   const publishedAt = item.resultPublishedAt ? `发布时间：${formatDate(item.resultPublishedAt)}` : "暂未发布";
 
   return `
@@ -756,7 +810,7 @@ function renderRecords() {
   const detail = cardDetails[item.cardType] || { applicationRules: [], reviewRules: [], score: "" };
   const autoScore = detail.score || "";
   const attachments = renderAttachmentPreviewList(item.attachments || [], item.id, "apply");
-  const currentStatus = normalizeReviewStatus(item.reviewStatus);
+  const currentStatus = displayReviewStatus(item);
   const deleteButton = canDeleteAnyStatusSubmission()
     ? `<button type="button" class="delete-submission-record-btn danger-button" data-id="${escapeHtml(item.id)}">删除申请</button>`
     : "";
@@ -807,6 +861,7 @@ function renderRecords() {
         <div class="attachment-preview-list">${attachments}</div>
       </div>
 
+      ${renderChangeRequest(item)}
       ${renderFeedbackFiles(item)}
       ${renderReviewForm(item)}
       ${renderPublicResultConfirm(item)}
@@ -1000,6 +1055,38 @@ recordsEl.addEventListener("submit", async (event) => {
   event.preventDefault();
   const record = event.target.closest(".record");
   const id = record ? record.dataset.id : "";
+
+  if (event.target.classList.contains("change-request-form")) {
+    const form = event.target;
+    const data = new FormData(form);
+    const reason = String(data.get("reason") || "").trim();
+    if (!reason) {
+      setAdminMessage("请填写驳回原因。", "error");
+      return;
+    }
+    if (!window.confirm("确认驳回这条申请并要求申报人修改后重新提交？")) return;
+
+    const button = form.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = "驳回中...";
+    try {
+      const response = await fetch(apiUrl(`/api/submissions/${id}/change-request`), {
+        method: "POST",
+        headers: authHeaders(),
+        body: data
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "驳回失败");
+      replaceRecord(result.record);
+      setAdminMessage(result.message || "申请已驳回，等待申报人修改。", "success");
+      showSuccessDialog("申请已驳回");
+    } catch (error) {
+      setAdminMessage(error.message, "error");
+      button.disabled = false;
+      button.textContent = "驳回申请";
+    }
+    return;
+  }
 
   if (event.target.classList.contains("feedback-upload-form")) {
     const form = event.target;

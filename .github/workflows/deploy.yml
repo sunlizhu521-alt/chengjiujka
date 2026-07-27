@@ -57,11 +57,18 @@ jobs:
 
             BASELINE_SUBMISSIONS=$(json_count data/submissions.json array)
             BASELINE_USERS=$(json_count data/users.json object)
-            echo "Data baseline: submissions=$BASELINE_SUBMISSIONS users=$BASELINE_USERS"
+            BASELINE_UPLOADS=0
+            if [ -d uploads ]; then
+              BASELINE_UPLOADS=$(find uploads -type f | wc -l)
+            fi
+            echo "Data baseline: submissions=$BASELINE_SUBMISSIONS users=$BASELINE_USERS uploads=$BASELINE_UPLOADS"
 
-            if [ -d data ]; then
-              BACKUP_FILE=~/backups/$PROJECT_NAME/data-$(date +%Y%m%d-%H%M%S).tar.gz
-              tar -czf "$BACKUP_FILE" data
+            if [ -d data ] || [ -d uploads ]; then
+              BACKUP_TARGETS=()
+              [ -d data ] && BACKUP_TARGETS+=(data)
+              [ -d uploads ] && BACKUP_TARGETS+=(uploads)
+              BACKUP_FILE=~/backups/$PROJECT_NAME/runtime-$(date +%Y%m%d-%H%M%S).tar.gz
+              tar -czf "$BACKUP_FILE" "${BACKUP_TARGETS[@]}"
               test -s "$BACKUP_FILE"
               tar -tzf "$BACKUP_FILE" >/dev/null
 
@@ -69,10 +76,15 @@ jobs:
               tar -xzf "$BACKUP_FILE" -C "$VERIFY_DIR"
               BACKUP_SUBMISSIONS=$(json_count "$VERIFY_DIR/data/submissions.json" array)
               BACKUP_USERS=$(json_count "$VERIFY_DIR/data/users.json" object)
+              BACKUP_UPLOADS=0
+              if [ -d "$VERIFY_DIR/uploads" ]; then
+                BACKUP_UPLOADS=$(find "$VERIFY_DIR/uploads" -type f | wc -l)
+              fi
               rm -rf "$VERIFY_DIR"
               test "$BACKUP_SUBMISSIONS" = "$BASELINE_SUBMISSIONS"
               test "$BACKUP_USERS" = "$BASELINE_USERS"
-              echo "Backup verified: $BACKUP_FILE submissions=$BACKUP_SUBMISSIONS users=$BACKUP_USERS"
+              test "$BACKUP_UPLOADS" = "$BASELINE_UPLOADS"
+              echo "Backup verified: $BACKUP_FILE submissions=$BACKUP_SUBMISSIONS users=$BACKUP_USERS uploads=$BACKUP_UPLOADS"
               ls -lh "$BACKUP_FILE"
             fi
 
@@ -99,8 +111,13 @@ jobs:
             curl -fsS --retry 15 --retry-delay 2 --retry-connrefused http://127.0.0.1:4005/api/health
             POST_SUBMISSIONS=$(json_count data/submissions.json array)
             POST_USERS=$(json_count data/users.json object)
+            POST_UPLOADS=0
+            if [ -d uploads ]; then
+              POST_UPLOADS=$(find uploads -type f | wc -l)
+            fi
             test "$POST_SUBMISSIONS" -ge "$BASELINE_SUBMISSIONS"
             test "$POST_USERS" -ge "$BASELINE_USERS"
-            echo "Data verified after deploy: submissions=$POST_SUBMISSIONS users=$POST_USERS"
+            test "$POST_UPLOADS" -ge "$BASELINE_UPLOADS"
+            echo "Data verified after deploy: submissions=$POST_SUBMISSIONS users=$POST_USERS uploads=$POST_UPLOADS"
             pm2 status chengjiujka
           REMOTE

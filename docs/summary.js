@@ -60,11 +60,17 @@ function normalizeReviewStatus(status) {
   return status || "待评审";
 }
 
+function displayReviewStatus(item) {
+  if (item?.changeRequest?.status === "requested") return "待修改";
+  return normalizeReviewStatus(item?.reviewStatus);
+}
+
 function statusBadge(status) {
   const normalized = normalizeReviewStatus(status);
   if (normalized === "通过") return "badge pass";
   if (normalized === "不通过") return "badge reject";
   if (normalized === "待评审") return "badge pending";
+  if (status === "待修改") return "badge changes-requested";
   return "badge";
 }
 
@@ -112,7 +118,7 @@ function filteredRecords() {
 
   return allRecords.filter((item) => {
     const matchesCard = !card || item.cardType === card;
-    const matchesStatus = !status || normalizeReviewStatus(item.reviewStatus) === status;
+    const matchesStatus = !status || displayReviewStatus(item) === status;
     const haystack = [
       item.cardType,
       item.id,
@@ -139,7 +145,8 @@ function renderSummary(records) {
   const total = records.length;
   const passed = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "通过").length;
   const rejected = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "不通过").length;
-  const pending = records.filter((item) => normalizeReviewStatus(item.reviewStatus) === "待评审").length;
+  const pending = records.filter((item) => displayReviewStatus(item) === "待评审").length;
+  const changesRequested = records.filter((item) => displayReviewStatus(item) === "待修改").length;
   const totalScore = records
     .filter((item) => normalizeReviewStatus(item.reviewStatus) === "通过")
     .reduce((sum, item) => sum + Number(item.score || 0), 0);
@@ -149,6 +156,7 @@ function renderSummary(records) {
     ["通过", passed],
     ["不通过", rejected],
     ["待评审", pending],
+    ["待修改", changesRequested],
     ["通过分值", totalScore]
   ]
     .map((item) => `<div class="summary-card"><strong>${item[1]}</strong><span>${item[0]}</span></div>`)
@@ -186,7 +194,7 @@ function renderTable() {
 
   summaryBody.innerHTML = records
     .map((item, index) => {
-      const status = normalizeReviewStatus(item.reviewStatus);
+      const status = displayReviewStatus(item);
       const checked = selectedRecordIds.has(item.id) ? "checked" : "";
       const disabled = canDeleteAnyStatusRecords() ? "" : "disabled";
       return `

@@ -391,6 +391,33 @@ function createSession(user) {
   return `${payload}.${hmac(payload)}`;
 }
 
+function createResubmitToken(record) {
+  const requestedAt = String(record?.changeRequest?.requestedAt || "");
+  const payload = base64Url(
+    JSON.stringify({
+      purpose: "resubmit",
+      id: record.id,
+      name: record.applicantName,
+      requestedAt,
+      exp: Date.now() + 1000 * 60 * 30
+    })
+  );
+  return `${payload}.${hmac(payload)}`;
+}
+
+function verifyResubmitToken(token) {
+  const [payload, signature] = String(token || "").split(".");
+  if (!payload || !signature || hmac(payload) !== signature) return null;
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (data.purpose !== "resubmit" || !data.exp || data.exp < Date.now()) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 function createUserId() {
   return `u-${crypto.randomBytes(8).toString("hex")}`;
 }
@@ -1167,12 +1194,45 @@ function localDateString(date = new Date()) {
 function publicReviewResult(record) {
   const normalizedRecord = normalizeAttachmentNames(record);
   const isPublished = Boolean(normalizedRecord.resultPublished);
+  const changesRequested = normalizedRecord.changeRequest?.status === "requested";
+  const wasResubmitted = normalizedRecord.changeRequest?.status === "resubmitted";
   const hasReviewActivity =
     Object.values(normalizedRecord.reviewVotes || {}).some((vote) => Boolean(vote?.status)) ||
-    (normalizedRecord.feedbackFiles || []).length > 0 ||
+    (!wasResubmitted && (normalizedRecord.feedbackFiles || []).length > 0) ||
     normalizedRecord.reviewStatus === "通过" ||
     normalizedRecord.reviewStatus === "不通过";
-  const progressStatus = isPublished ? "已完成" : hasReviewActivity ? "评审中" : "待评审";
+  const progressStatus = changesRequested ? "待修改" : isPublished ? "已完成" : hasReviewActivity ? "评审中" : "待评审";
+
+  if (changesRequested) {
+    const changeFiles = normalizeFileList(normalizedRecord.changeRequest.files || []);
+    return {
+      id: normalizedRecord.id,
+      cardType: normalizedRecord.cardType,
+      applicantName: normalizedRecord.applicantName,
+      applicationDate: normalizedRecord.applicationDate,
+      progressStatus,
+      resultPublished: false,
+      reviewStatus: "",
+      score: "",
+      reviewComment: "",
+      reviewDate: "",
+      changeRequest: {
+        reason: normalizedRecord.changeRequest.reason || "",
+        requestedAt: normalizedRecord.changeRequest.requestedAt || "",
+        files: changeFiles
+      },
+      editableApplication: {
+        department: normalizedRecord.department || "",
+        position: normalizedRecord.position || "",
+        contact: normalizedRecord.contact || "",
+        applicationDate: normalizedRecord.applicationDate || "",
+        description: normalizedRecord.description || "",
+        commitment: normalizedRecord.commitment || "",
+        attachments: normalizedRecord.attachments || []
+      },
+      resubmitToken: createResubmitToken(normalizedRecord)
+    };
+  }
 
   if (!isPublished) {
     return {
@@ -1287,6 +1347,21 @@ function uploadedFileInfo(file) {
     size: file.size,
     mimetype: file.mimetype,
     uploadedAt: new Date().toISOString()
+  };
+}
+
+function applicationSnapshot(record) {
+  return {
+    cardType: record.cardType,
+    applicantName: record.applicantName,
+    department: record.department || "",
+    position: record.position || "",
+    contact: record.contact || "",
+    applicationDate: record.applicationDate || "",
+    description: record.description || "",
+    commitment: record.commitment || "",
+    attachments: normalizeFileList(record.attachments || []),
+    submittedAt: record.submittedAt || ""
   };
 }
 
@@ -2142,6 +2217,9 @@ app.patch("/api/submissions/:id/review", requireReviewUser, requirePageAccess("r
   if (!record) {
     return res.status(404).json({ message: "未找到提交记录。" });
   }
+  if (record.changeRequest?.status === "requested") {
+    return res.status(409).json({ message: "该申请已驳回等待申报人修改，暂不能评审。" });
+  }
   if (!Array.isArray(record.feedbackFiles) || record.feedbackFiles.length === 0) {
     return res.status(400).json({ message: "请先上传评审组收集反馈文件，再进行评审。" });
   }
@@ -2184,11 +2262,213 @@ app.post("/api/submissions/:id/feedback-files", requireAdmin, upload.array("feed
     return res.status(404).json({ message: "未找到提交记录。" });
   }
 
-  record.feedbackFiles = [...(record.feedbackFiles || []), ...req.files.map(uploadedFileInfo)];
+  const uploadedFiles = req.files.map(uploadedFileInfo);
+  record.feedbackFiles = [...(record.feedbackFiles || []), ...uploadedFiles];
+  if (record.changeRequest?.status === "requested") {
+    record.changeRequest.files = [...(record.changeRequest.files || []), ...uploadedFiles];
+  }
   record.feedbackUpdatedAt = new Date().toISOString();
   writeSubmissions(records);
 
   res.json(publicSubmissionForReview(record));
+});
+
+app.post("/api/submissions/:id/change-request", requireAdmin, upload.array("feedbackFiles", 10), (req, res) => {
+  const reason = String(req.body.reason || "").trim();
+  if (!reason) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "请填写驳回原因。" });
+  }
+
+  const records = readSubmissions();
+  const record = records.find((item) => item.id === req.params.id);
+  if (!record) {
+    removeUploadedFiles(req.files);
+    return res.status(404).json({ message: "未找到提交记录。" });
+  }
+  if (record.resultPublished) {
+    removeUploadedFiles(req.files);
+    return res.status(409).json({ message: "已发布最终结果的申请不能驳回修改。" });
+  }
+  if (record.changeRequest?.status === "requested") {
+    removeUploadedFiles(req.files);
+    return res.status(409).json({ message: "该申请已处于待修改状态，请等待申报人重新提交。" });
+  }
+
+  const now = new Date().toISOString();
+  const changeFiles = (req.files || []).map(uploadedFileInfo);
+  record.revisionHistory = Array.isArray(record.revisionHistory) ? record.revisionHistory : [];
+  record.revisionHistory.push({
+    type: "change_requested",
+    actor: req.authUser.name,
+    at: now,
+    reason,
+    files: changeFiles,
+    reviewSnapshot: {
+      reviewStatus: record.reviewStatus || "待评审",
+      reviewVotes: record.reviewVotes || {},
+      reviewComment: record.reviewComment || "",
+      reviewer: record.reviewer || "",
+      reviewDate: record.reviewDate || ""
+    }
+  });
+  record.feedbackFiles = [...(record.feedbackFiles || []), ...changeFiles];
+  record.changeRequest = {
+    status: "requested",
+    reason,
+    files: changeFiles,
+    requestedBy: req.authUser.name,
+    requestedAt: now
+  };
+  record.reviewStatus = "待评审";
+  record.score = "";
+  record.reviewVotes = {};
+  record.reviewComment = "";
+  record.reviewer = "";
+  record.reviewDate = "";
+  record.reviewSummary = null;
+  record.finalPublicComment = "";
+  record.resultPublished = false;
+  record.resultPublishedAt = "";
+  record.resultPublishedBy = "";
+  record.updatedAt = now;
+  writeSubmissions(records);
+
+  res.json({
+    message: "申请已驳回，等待申报人修改后重新提交。",
+    record: publicSubmissionForReview(record)
+  });
+});
+
+app.patch("/api/submissions/:id/resubmit", upload.array("attachments", 10), (req, res) => {
+  const tokenData = verifyResubmitToken(req.body.resubmitToken);
+  if (!tokenData || tokenData.id !== req.params.id) {
+    removeUploadedFiles(req.files);
+    return res.status(401).json({ message: "修改凭证无效或已过期，请返回进度查询重新验证。" });
+  }
+
+  const {
+    cardType,
+    applicantName,
+    department,
+    position,
+    contact,
+    applicationDate,
+    description,
+    commitment
+  } = req.body;
+  const requiredMissing = [
+    ["cardType", cardType],
+    ["applicantName", applicantName],
+    ["department", department],
+    ["position", position],
+    ["applicationDate", applicationDate],
+    ["description", description],
+    ["commitment", commitment]
+  ].filter(([, value]) => !String(value || "").trim());
+  if (requiredMissing.length > 0) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "请完整填写必填信息后再重新提交。" });
+  }
+
+  const records = readSubmissions();
+  const recordIndex = records.findIndex((item) => item.id === req.params.id);
+  const record = records[recordIndex];
+  if (!record) {
+    removeUploadedFiles(req.files);
+    return res.status(404).json({ message: "未找到提交记录。" });
+  }
+  if (
+    record.changeRequest?.status !== "requested" ||
+    tokenData.name !== record.applicantName ||
+    tokenData.requestedAt !== record.changeRequest.requestedAt
+  ) {
+    removeUploadedFiles(req.files);
+    return res.status(409).json({ message: "该申请已不是待修改状态，请重新查询进度。" });
+  }
+  if (String(applicantName).trim() !== record.applicantName || cardType !== record.cardType) {
+    removeUploadedFiles(req.files);
+    return res.status(403).json({ message: "重新提交时不能更改申报人或成就卡项目。" });
+  }
+
+  const rosterEmployee = findRosterEmployee(record.applicantName);
+  if (!rosterEmployee) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "申报人姓名不在花名册内，不能重新提交。" });
+  }
+
+  let retainedNames = [];
+  try {
+    retainedNames = JSON.parse(String(req.body.retainedAttachmentNames || "[]"));
+  } catch {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "原附件信息格式不正确，请重新打开修改页面。" });
+  }
+  if (!Array.isArray(retainedNames)) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "原附件信息格式不正确。" });
+  }
+
+  const existingByName = new Map((record.attachments || []).map((file) => [file.filename, file]));
+  const uniqueRetainedNames = [...new Set(retainedNames.map((name) => String(name || "")))];
+  if (uniqueRetainedNames.some((name) => !existingByName.has(name))) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "原附件已发生变化，请返回进度查询重新进入修改。" });
+  }
+  const retainedAttachments = uniqueRetainedNames.map((name) => existingByName.get(name));
+  const newAttachments = (req.files || []).map(uploadedFileInfo);
+  if (retainedAttachments.length + newAttachments.length > 10) {
+    removeUploadedFiles(req.files);
+    return res.status(400).json({ message: "材料总数最多 10 个，请移除部分材料后重试。" });
+  }
+
+  const now = new Date().toISOString();
+  const previousApplication = applicationSnapshot(record);
+  record.revisionHistory = Array.isArray(record.revisionHistory) ? record.revisionHistory : [];
+  record.revisionHistory.push({
+    type: "resubmitted",
+    actor: record.applicantName,
+    at: now,
+    revision: Number(record.revisionNumber || 0) + 1,
+    previousApplication
+  });
+  record.originalSubmittedAt = record.originalSubmittedAt || record.submittedAt;
+  record.department = rosterEmployee.department || String(department).trim();
+  record.position = rosterEmployee.position || String(position).trim();
+  record.contact = String(contact || "").trim();
+  record.applicationDate = applicationDate;
+  record.description = String(description).trim();
+  record.commitment = commitment;
+  record.attachments = [...retainedAttachments, ...newAttachments];
+  record.submittedAt = now;
+  record.resubmittedAt = now;
+  record.revisionNumber = Number(record.revisionNumber || 0) + 1;
+  record.changeRequest = {
+    ...record.changeRequest,
+    status: "resubmitted",
+    resubmittedAt: now
+  };
+  record.reviewStatus = "待评审";
+  record.score = "";
+  record.reviewVotes = {};
+  record.reviewComment = "";
+  record.reviewer = "";
+  record.reviewDate = "";
+  record.reviewSummary = null;
+  record.finalPublicComment = "";
+  record.resultPublished = false;
+  record.resultPublishedAt = "";
+  record.resultPublishedBy = "";
+  record.updatedAt = now;
+
+  records.splice(recordIndex, 1);
+  records.unshift(record);
+  writeSubmissions(records);
+
+  res.json({
+    id: record.id,
+    message: "修改已提交，申请已重新进入评审流程。"
+  });
 });
 
 app.patch("/api/submissions/:id/query-secret", requireAdmin, (req, res) => {
@@ -2224,6 +2504,9 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   const record = records.find((item) => item.id === req.params.id);
   if (!record) {
     return res.status(404).json({ message: "未找到提交记录。" });
+  }
+  if (record.changeRequest?.status === "requested") {
+    return res.status(409).json({ message: "该申请正在等待申报人修改，暂不能发布最终结果。" });
   }
 
   record.finalPublicComment = finalPublicComment;
