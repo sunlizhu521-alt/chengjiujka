@@ -301,7 +301,9 @@ function dingtalkActionText(action) {
     删除成就币记录: "删除了成就币记录",
     提交评审意见: "提交了评审意见",
     上传评审组反馈文件: "上传了评审组反馈文件",
+    驳回申请: "驳回了成就卡申请",
     重置查询秘钥: "重置了查询秘钥",
+    保存最终展示: "保存了最终展示",
     确认展示评审结果: "确认展示了评审结果",
     取消展示评审结果: "取消展示了评审结果",
     批量删除申请记录: "批量删除了申请记录",
@@ -2270,6 +2272,15 @@ app.post("/api/submissions/:id/feedback-files", requireAdmin, upload.array("feed
   record.feedbackUpdatedAt = new Date().toISOString();
   writeSubmissions(records);
 
+  notifyDingTalk("上传评审组反馈文件", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `成就卡：${record.cardType}`,
+    `申请编号：${record.id}`,
+    `上传文件：${uploadedFiles.length} 个`,
+    `文件名称：${uploadedFiles.map((file) => file.originalName).join("、")}`
+  ]);
+
   res.json(publicSubmissionForReview(record));
 });
 
@@ -2333,6 +2344,15 @@ app.post("/api/submissions/:id/change-request", requireAdmin, upload.array("feed
   record.resultPublishedBy = "";
   record.updatedAt = now;
   writeSubmissions(records);
+
+  notifyDingTalk("驳回申请", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `成就卡：${record.cardType}`,
+    `申请编号：${record.id}`,
+    `驳回原因：${reason}`,
+    `反馈文件：${changeFiles.length} 个`
+  ]);
 
   res.json({
     message: "申请已驳回，等待申报人修改后重新提交。",
@@ -2516,6 +2536,15 @@ app.patch("/api/submissions/:id/public-result", requireAdmin, (req, res) => {
   record.updatedAt = new Date().toISOString();
   writeSubmissions(records);
 
+  notifyDingTalk("保存最终展示", [
+    `操作人：${req.authUser.name}`,
+    `申报人：${record.applicantName}`,
+    `成就卡：${record.cardType}`,
+    `申请编号：${record.id}`,
+    `最终结果：${record.reviewStatus || "待评审"}`,
+    `展示状态：${resultPublished ? "已发布" : "暂未发布"}`,
+    `最终展示意见：${finalPublicComment || "未填写"}`
+  ]);
 
   res.json(publicSubmissionForReview(record));
 });
