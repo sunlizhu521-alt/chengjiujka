@@ -638,9 +638,17 @@ function updatePagerButtons(total) {
 
 function renderVoteProgress(item) {
   const votes = item.reviewVotes || {};
+  const statuses = reviewMembers.map((name) => (votes[name] || {}).status).filter(Boolean);
+  const passed = statuses.filter((status) => status === "通过").length;
+  const rejected = statuses.filter((status) => status === "不通过").length;
   return `
     <div class="vote-progress">
       <strong>评审进度</strong>
+      <div class="review-rule-summary" aria-label="评审通过和不通过规则">
+        <span><b>通过规则</b> 5名评审中，4人及以上选择通过</span>
+        <span><b>不通过规则</b> 5名评审中，3人及以上选择不通过</span>
+        <span class="review-vote-count">当前：通过 ${passed} 票，不通过 ${rejected} 票，已评审 ${statuses.length}/5</span>
+      </div>
       <div class="vote-pills">
         ${reviewMembers
           .map((name) => {

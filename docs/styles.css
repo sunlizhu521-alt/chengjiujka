@@ -1745,6 +1745,32 @@ small {
   color: #30305b;
 }
 
+.review-rule-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-bottom: 10px;
+  padding: 9px 11px;
+  border: 1px solid #d9dcff;
+  border-left: 4px solid var(--primary);
+  border-radius: 6px;
+  background: #f7f7ff;
+  color: #4a4a6d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.review-rule-summary b {
+  margin-right: 4px;
+  color: #25254b;
+}
+
+.review-vote-count {
+  color: var(--primary-strong);
+  font-weight: 700;
+}
+
 .vote-pills {
   display: flex;
   flex-wrap: wrap;

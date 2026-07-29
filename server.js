@@ -1385,7 +1385,7 @@ function calculateFinalReview(votes, cardType) {
   const rejected = statuses.filter((status) => status === "不通过").length;
 
   let reviewStatus = "待评审";
-  if (passed >= 3) reviewStatus = "通过";
+  if (passed >= 4) reviewStatus = "通过";
   else if (rejected >= 3) reviewStatus = "不通过";
 
   return {
