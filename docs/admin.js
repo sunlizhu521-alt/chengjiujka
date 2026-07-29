@@ -645,7 +645,7 @@ function renderVoteProgress(item) {
     <div class="vote-progress">
       <strong>评审进度</strong>
       <div class="review-rule-summary" aria-label="评审通过和不通过规则">
-        <span><b>通过规则</b> 5名评审中，4人及以上选择通过</span>
+        <span><b>通过规则</b> 5名评审中，3人及以上选择通过</span>
         <span><b>不通过规则</b> 5名评审中，3人及以上选择不通过</span>
         <span class="review-vote-count">当前：通过 ${passed} 票，不通过 ${rejected} 票，已评审 ${statuses.length}/5</span>
       </div>
