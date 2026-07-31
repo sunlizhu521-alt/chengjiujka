@@ -222,6 +222,7 @@ app.use((req, res, next) => {
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-admin-token, x-review-token");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
@@ -237,7 +238,7 @@ app.use(
 );
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false }));
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(express.static(publicDir));
 
 function normalizeOriginalName(name) {
@@ -1921,6 +1922,55 @@ app.post("/api/results/query", (req, res) => {
 app.get("/api/public/passed", (req, res) => {
   res.setHeader("Cache-Control", "public, max-age=30");
   res.json(getPublicPassedGroups());
+});
+
+app.post("/api/public/passed/export", (req, res) => {
+  const records = Array.isArray(req.body.records) ? req.body.records : [];
+  if (records.length === 0) {
+    return res.status(400).json({ message: "当前筛选结果为空，无法导出。" });
+  }
+  if (records.length > 5000) {
+    return res.status(400).json({ message: "单次最多导出 5000 条记录。" });
+  }
+
+  const excelText = (value, maxLength = 200) => {
+    const text = String(value ?? "").trim().slice(0, maxLength);
+    return /^[=+\-@]/.test(text) ? `'${text}` : text;
+  };
+  const rows = records.map((record, index) => ({
+    序号: index + 1,
+    申报人姓名: excelText(record.applicantName),
+    人员状态: excelText(record.employmentStatus),
+    所属部门: excelText(record.department),
+    成就卡项目: excelText(record.cardType),
+    分值: Number.isFinite(Number(record.score)) ? Number(record.score) : 0,
+    有效状态: record.validity === "active" ? "有效期内" : "已过有效期",
+    申报日期: excelText(record.applicationDate, 20),
+    评审日期: excelText(record.reviewDate, 20)
+  }));
+
+  const worksheet = xlsx.utils.json_to_sheet(rows);
+  worksheet["!cols"] = [
+    { wch: 8 },
+    { wch: 16 },
+    { wch: 12 },
+    { wch: 22 },
+    { wch: 18 },
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 14 }
+  ];
+  const workbook = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(workbook, worksheet, "榜单明细");
+  const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
+  const timestamp = compactChinaDate(new Date()).replace(/-/g, "");
+  const filename = `成就卡榜单筛选结果-${timestamp}.xlsx`;
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+  res.setHeader("Cache-Control", "no-store");
+  res.send(buffer);
 });
 
 app.get("/api/applicants/secret-status", (req, res) => {

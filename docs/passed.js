@@ -10,6 +10,7 @@ const passedCardCountMin = document.querySelector("#passedCardCountMin");
 const passedScoreMin = document.querySelector("#passedScoreMin");
 const passedApplyBtn = document.querySelector("#passedApplyBtn");
 const passedResetBtn = document.querySelector("#passedResetBtn");
+const passedExportBtn = document.querySelector("#passedExportBtn");
 const activeCardChart = document.querySelector("#activeCardChart");
 const departmentCardChart = document.querySelector("#departmentCardChart");
 const applicantTopChart = document.querySelector("#applicantTopChart");
@@ -19,6 +20,7 @@ const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 
 let passedRecords = [];
+let filteredPassedRecords = [];
 let activePassedFilters = {
   keyword: "",
   department: "",
@@ -237,9 +239,67 @@ function renderPassedTable(records) {
 function renderPassedRecords() {
   const baseFiltered = passedRecords.filter(matchesBaseFilters);
   const filtered = applyApplicantAggregateFilters(baseFiltered);
+  filteredPassedRecords = filtered;
   passedCount.textContent = `${filtered.length} 条`;
+  passedExportBtn.disabled = filtered.length === 0;
   renderCharts(filtered);
   renderPassedTable(filtered);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function responseFilename(response) {
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (!utf8Match) return "成就卡榜单筛选结果.xlsx";
+
+  try {
+    return decodeURIComponent(utf8Match[1]);
+  } catch {
+    return "成就卡榜单筛选结果.xlsx";
+  }
+}
+
+async function exportFilteredRecords() {
+  if (!filteredPassedRecords.length) {
+    setPassedMessage("当前筛选结果为空，无法导出。", "error");
+    return;
+  }
+
+  const originalText = passedExportBtn.textContent;
+  passedExportBtn.disabled = true;
+  passedExportBtn.textContent = "导出中...";
+  setPassedMessage("正在生成 Excel...", "");
+
+  try {
+    const response = await fetch(apiUrl("/api/public/passed/export"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ records: filteredPassedRecords })
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      throw new Error(result.message || "导出失败");
+    }
+
+    downloadBlob(await response.blob(), responseFilename(response));
+    setPassedMessage(`已导出 ${filteredPassedRecords.length} 条筛选结果`, "success");
+  } catch (error) {
+    setPassedMessage(error.message || "导出失败", "error");
+  } finally {
+    passedExportBtn.textContent = originalText;
+    passedExportBtn.disabled = filteredPassedRecords.length === 0;
+  }
 }
 
 async function loadPassedRecords() {
@@ -278,5 +338,7 @@ passedResetBtn.addEventListener("click", () => {
   activePassedFilters = readPassedFilters();
   renderPassedRecords();
 });
+
+passedExportBtn.addEventListener("click", exportFilteredRecords);
 
 loadPassedRecords();

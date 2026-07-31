@@ -1310,6 +1310,16 @@ small {
   margin: 0;
 }
 
+.passed-export-button {
+  flex: 0 0 auto;
+}
+
+.passed-export-button:disabled {
+  cursor: not-allowed;
+  background: #dadaf4;
+  color: #7c7ca3;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -2304,6 +2314,10 @@ small {
     width: 100%;
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .passed-export-button {
+    width: 100%;
   }
 
   .card-filter {
