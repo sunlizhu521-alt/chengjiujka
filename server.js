@@ -1943,6 +1943,7 @@ app.get("/api/public/passed", (req, res) => {
 
 app.post("/api/public/passed/export", (req, res) => {
   const records = Array.isArray(req.body.records) ? req.body.records : [];
+  const isApplicantSummary = req.body.view === "summary";
   if (records.length === 0) {
     return res.status(400).json({ message: "当前筛选结果为空，无法导出。" });
   }
@@ -1954,35 +1955,45 @@ app.post("/api/public/passed/export", (req, res) => {
     const text = String(value ?? "").trim().slice(0, maxLength);
     return /^[=+\-@]/.test(text) ? `'${text}` : text;
   };
-  const rows = records.map((record, index) => ({
-    序号: index + 1,
-    申报人姓名: excelText(record.applicantName),
-    人员状态: excelText(record.employmentStatus),
-    所属部门: excelText(record.department),
-    成就卡项目: excelText(record.cardType),
-    分值: Number.isFinite(Number(record.score)) ? Number(record.score) : 0,
-    有效状态: record.validity === "active" ? "有效期内" : "已过有效期",
-    申报日期: excelText(record.applicationDate, 20),
-    评审日期: excelText(record.reviewDate, 20)
-  }));
+  const rows = isApplicantSummary
+    ? records.map((record, index) => ({
+        序号: index + 1,
+        申报人: excelText(record.applicantName),
+        人员状态: excelText(record.employmentStatus),
+        总成就卡数量: Number.isFinite(Number(record.count)) ? Number(record.count) : 0,
+        总分值: Number.isFinite(Number(record.score)) ? Number(record.score) : 0
+      }))
+    : records.map((record, index) => ({
+        序号: index + 1,
+        申报人姓名: excelText(record.applicantName),
+        人员状态: excelText(record.employmentStatus),
+        所属部门: excelText(record.department),
+        成就卡项目: excelText(record.cardType),
+        分值: Number.isFinite(Number(record.score)) ? Number(record.score) : 0,
+        有效状态: record.validity === "active" ? "有效期内" : "已过有效期",
+        申报日期: excelText(record.applicationDate, 20),
+        评审日期: excelText(record.reviewDate, 20)
+      }));
 
   const worksheet = xlsx.utils.json_to_sheet(rows);
-  worksheet["!cols"] = [
-    { wch: 8 },
-    { wch: 16 },
-    { wch: 12 },
-    { wch: 22 },
-    { wch: 18 },
-    { wch: 10 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 14 }
-  ];
+  worksheet["!cols"] = isApplicantSummary
+    ? [{ wch: 8 }, { wch: 16 }, { wch: 12 }, { wch: 18 }, { wch: 12 }]
+    : [
+        { wch: 8 },
+        { wch: 16 },
+        { wch: 12 },
+        { wch: 22 },
+        { wch: 18 },
+        { wch: 10 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 14 }
+      ];
   const workbook = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(workbook, worksheet, "榜单明细");
+  xlsx.utils.book_append_sheet(workbook, worksheet, isApplicantSummary ? "人员汇总" : "榜单明细");
   const buffer = xlsx.write(workbook, { type: "buffer", bookType: "xlsx" });
   const timestamp = compactChinaDate(new Date()).replace(/-/g, "");
-  const filename = `成就卡榜单筛选结果-${timestamp}.xlsx`;
+  const filename = `${isApplicantSummary ? "人员汇总" : "成就卡榜单"}筛选结果-${timestamp}.xlsx`;
 
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);

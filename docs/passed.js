@@ -25,6 +25,10 @@ const applicantPageInfo = document.querySelector("#applicantPageInfo");
 const passedPrevPage = document.querySelector("#passedPrevPage");
 const passedNextPage = document.querySelector("#passedNextPage");
 const passedPageInfo = document.querySelector("#passedPageInfo");
+const passedDetailTab = document.querySelector("#passedDetailTab");
+const applicantSummaryTab = document.querySelector("#applicantSummaryTab");
+const passedDetailView = document.querySelector("#passedDetailView");
+const applicantSummaryView = document.querySelector("#applicantSummaryView");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
 const pageSize = 10;
@@ -34,6 +38,7 @@ let filteredPassedRecords = [];
 let filteredApplicantRows = [];
 let passedPage = 1;
 let applicantPage = 1;
+let activeTableView = "detail";
 let activePassedFilters = {
   keyword: "",
   department: "",
@@ -354,6 +359,20 @@ function renderPassedRecords(resetPages = false) {
   renderCharts(filtered);
   renderApplicantSummary(filtered);
   renderPassedTable(filtered);
+  setTableView(activeTableView);
+}
+
+function setTableView(view) {
+  activeTableView = view === "summary" ? "summary" : "detail";
+  const showSummary = activeTableView === "summary";
+  passedDetailView.hidden = showSummary;
+  applicantSummaryView.hidden = !showSummary;
+  passedDetailTab.classList.toggle("active", !showSummary);
+  applicantSummaryTab.classList.toggle("active", showSummary);
+  passedDetailTab.setAttribute("aria-selected", String(!showSummary));
+  applicantSummaryTab.setAttribute("aria-selected", String(showSummary));
+  const exportRecords = showSummary ? filteredApplicantRows : filteredPassedRecords;
+  passedExportBtn.disabled = exportRecords.length === 0;
 }
 
 function downloadBlob(blob, filename) {
@@ -370,17 +389,18 @@ function downloadBlob(blob, filename) {
 function responseFilename(response) {
   const disposition = response.headers.get("Content-Disposition") || "";
   const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (!utf8Match) return "成就卡榜单筛选结果.xlsx";
+  if (!utf8Match) return activeTableView === "summary" ? "人员汇总筛选结果.xlsx" : "成就卡榜单筛选结果.xlsx";
 
   try {
     return decodeURIComponent(utf8Match[1]);
   } catch {
-    return "成就卡榜单筛选结果.xlsx";
+    return activeTableView === "summary" ? "人员汇总筛选结果.xlsx" : "成就卡榜单筛选结果.xlsx";
   }
 }
 
 async function exportFilteredRecords() {
-  if (!filteredPassedRecords.length) {
+  const exportRecords = activeTableView === "summary" ? filteredApplicantRows : filteredPassedRecords;
+  if (!exportRecords.length) {
     setPassedMessage("当前筛选结果为空，无法导出。", "error");
     return;
   }
@@ -394,7 +414,7 @@ async function exportFilteredRecords() {
     const response = await fetch(apiUrl("/api/public/passed/export"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ records: filteredPassedRecords })
+      body: JSON.stringify({ view: activeTableView, records: exportRecords })
     });
 
     if (!response.ok) {
@@ -403,12 +423,14 @@ async function exportFilteredRecords() {
     }
 
     downloadBlob(await response.blob(), responseFilename(response));
-    setPassedMessage(`已导出 ${filteredPassedRecords.length} 条筛选结果`, "success");
+    const unit = activeTableView === "summary" ? "人" : "条";
+    setPassedMessage(`已导出 ${exportRecords.length} ${unit}筛选结果`, "success");
   } catch (error) {
     setPassedMessage(error.message || "导出失败", "error");
   } finally {
     passedExportBtn.textContent = originalText;
-    passedExportBtn.disabled = filteredPassedRecords.length === 0;
+    const remainingRecords = activeTableView === "summary" ? filteredApplicantRows : filteredPassedRecords;
+    passedExportBtn.disabled = remainingRecords.length === 0;
   }
 }
 
@@ -451,6 +473,8 @@ passedResetBtn.addEventListener("click", () => {
 });
 
 passedExportBtn.addEventListener("click", exportFilteredRecords);
+passedDetailTab.addEventListener("click", () => setTableView("detail"));
+applicantSummaryTab.addEventListener("click", () => setTableView("summary"));
 passedPrevPage.addEventListener("click", () => {
   if (passedPage <= 1) return;
   passedPage -= 1;

@@ -1321,6 +1321,46 @@ small {
   color: #7c7ca3;
 }
 
+.leaderboard-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.leaderboard-view-tabs {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft-panel);
+}
+
+.leaderboard-view-tabs button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.leaderboard-view-tabs button.active {
+  background: #ffffff;
+  color: var(--blue-dark);
+  box-shadow: 0 1px 4px rgba(38, 47, 92, 0.12);
+}
+
+.leaderboard-view-tabs button span {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .table-pagination {
   display: flex;
   align-items: center;
@@ -2241,6 +2281,20 @@ small {
 }
 
 @media (max-width: 860px) {
+  .leaderboard-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .leaderboard-view-tabs,
+  .passed-export-button {
+    width: 100%;
+  }
+
+  .leaderboard-view-tabs button {
+    flex: 1;
+  }
+
   .topbar,
   .record-head {
     align-items: flex-start;
