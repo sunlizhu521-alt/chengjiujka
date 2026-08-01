@@ -1404,14 +1404,30 @@ function parseDateOnly(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function addCycle(date, cycle) {
-  const result = new Date(date.getTime());
-  if (cycle === "一季度") {
-    result.setMonth(result.getMonth() + 3);
-    return result;
-  }
-  result.setFullYear(result.getFullYear() + 1);
-  return result;
+function validMonthsForRecord(record) {
+  const importedMonths = Number(record.legacySource?.validMonths);
+  if (Number.isFinite(importedMonths) && importedMonths > 0) return importedMonths;
+
+  const configuredCycle = cardCycles[record.cardType];
+  if (configuredCycle === "一季度") return 3;
+  if (configuredCycle === "一年") return 12;
+
+  // The historical card dimension defines Xiaomifeng as 6 months and the
+  // remaining legacy cards as 12 months.
+  if (record.cardType === "小蜜蜂") return 6;
+  return 12;
+}
+
+function completedCalendarMonths(startDate, endDate) {
+  let months = (endDate.getFullYear() - startDate.getFullYear()) * 12;
+  months += endDate.getMonth() - startDate.getMonth();
+  if (endDate.getDate() < startDate.getDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+function chinaDateOnly(now = new Date()) {
+  const compact = compactChinaDate(now);
+  return parseDateOnly(`${compact.slice(0, 4)}-${compact.slice(4, 6)}-${compact.slice(6, 8)}`);
 }
 
 function scoreForCardType(cardType, explicitScore = "") {
@@ -1505,6 +1521,7 @@ function publicPassedRecord(record, validity, rosterByName = new Map()) {
 
 function groupPublicPassedRecords(records, now = new Date()) {
   const rosterByName = new Map(readRoster().employees.map((employee) => [employee.name, employee]));
+  const today = chinaDateOnly(now);
   return records.reduce(
     (groups, record) => {
       if (!record.resultPublished || record.reviewStatus !== "通过") {
@@ -1517,8 +1534,8 @@ function groupPublicPassedRecords(records, now = new Date()) {
         return groups;
       }
 
-      const expiresAt = addCycle(baseDate, cardCycles[record.cardType] || "一年");
-      const targetGroup = expiresAt >= now ? "active" : "expired";
+      const elapsedMonths = completedCalendarMonths(baseDate, today);
+      const targetGroup = elapsedMonths <= validMonthsForRecord(record) ? "active" : "expired";
       groups[targetGroup].push(publicPassedRecord(record, targetGroup, rosterByName));
       return groups;
     },
