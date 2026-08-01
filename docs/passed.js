@@ -8,6 +8,7 @@ const passedValidityFilter = document.querySelector("#passedValidityFilter");
 const passedEmploymentFilter = document.querySelector("#passedEmploymentFilter");
 const passedCardCountMin = document.querySelector("#passedCardCountMin");
 const passedScoreMin = document.querySelector("#passedScoreMin");
+const passedScoreRankTop = document.querySelector("#passedScoreRankTop");
 const passedApplyBtn = document.querySelector("#passedApplyBtn");
 const passedResetBtn = document.querySelector("#passedResetBtn");
 const passedExportBtn = document.querySelector("#passedExportBtn");
@@ -28,7 +29,8 @@ let activePassedFilters = {
   validity: "",
   employmentStatus: "",
   cardCountMin: "",
-  scoreMin: ""
+  scoreMin: "",
+  scoreRankTop: ""
 };
 
 function escapeHtml(value) {
@@ -95,7 +97,8 @@ function readPassedFilters() {
     validity: passedValidityFilter.value,
     employmentStatus: passedEmploymentFilter.value,
     cardCountMin: passedCardCountMin.value.trim(),
-    scoreMin: passedScoreMin.value.trim()
+    scoreMin: passedScoreMin.value.trim(),
+    scoreRankTop: passedScoreRankTop.value.trim()
   };
 }
 
@@ -159,6 +162,31 @@ function applyApplicantAggregateFilters(records) {
     const scoreOk = !hasScoreFilter || (Number.isFinite(minScore) && stats.score > minScore);
     return cardCountOk && scoreOk;
   });
+}
+
+function applyTotalScoreRankFilter(records) {
+  const rankText = activePassedFilters.scoreRankTop;
+  if (rankText === "") return records;
+
+  const rankLimit = Math.trunc(Number(rankText));
+  if (!Number.isFinite(rankLimit) || rankLimit < 1) return [];
+
+  const rankedApplicants = [...buildApplicantStats(records).entries()]
+    .sort((a, b) => b[1].score - a[1].score || a[0].localeCompare(b[0], "zh-CN"))
+    .slice(0, rankLimit)
+    .map(([applicantName]) => applicantName);
+  const rankByApplicant = new Map(rankedApplicants.map((applicantName, index) => [applicantName, index]));
+
+  return records
+    .filter((item) => rankByApplicant.has(String(item.applicantName || "").trim()))
+    .sort((a, b) => {
+      const aName = String(a.applicantName || "").trim();
+      const bName = String(b.applicantName || "").trim();
+      return (
+        rankByApplicant.get(aName) - rankByApplicant.get(bName) ||
+        String(b.reviewDate || "").localeCompare(String(a.reviewDate || ""))
+      );
+    });
 }
 
 function countBy(records, field) {
@@ -238,7 +266,8 @@ function renderPassedTable(records) {
 
 function renderPassedRecords() {
   const baseFiltered = passedRecords.filter(matchesBaseFilters);
-  const filtered = applyApplicantAggregateFilters(baseFiltered);
+  const aggregateFiltered = applyApplicantAggregateFilters(baseFiltered);
+  const filtered = applyTotalScoreRankFilter(aggregateFiltered);
   filteredPassedRecords = filtered;
   passedCount.textContent = `${filtered.length} 条`;
   passedExportBtn.disabled = filtered.length === 0;
@@ -335,6 +364,7 @@ passedResetBtn.addEventListener("click", () => {
   passedEmploymentFilter.value = "";
   passedCardCountMin.value = "";
   passedScoreMin.value = "";
+  passedScoreRankTop.value = "";
   activePassedFilters = readPassedFilters();
   renderPassedRecords();
 });

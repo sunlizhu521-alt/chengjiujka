@@ -879,6 +879,7 @@ small {
 
 .passed-filter-actions {
   display: flex;
+  grid-column: span 2;
   gap: 8px;
   align-items: end;
 }
@@ -2264,6 +2265,7 @@ small {
   }
 
   .passed-filter-actions {
+    grid-column: auto;
     width: 100%;
   }
 

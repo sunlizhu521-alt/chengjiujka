@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡榜单</title>
-    <link rel="stylesheet" href="./styles.css?v=20260703-02" />
+    <link rel="stylesheet" href="./styles.css?v=20260801-01" />
   </head>
   <body>
     <header class="topbar nav-only">
@@ -60,6 +60,10 @@
           <label class="field">
             <span>成就分值大于</span>
             <input id="passedScoreMin" type="number" min="0" step="1" placeholder="例如 20" />
+          </label>
+          <label class="field">
+            <span>总分值排名前</span>
+            <input id="passedScoreRankTop" type="number" min="1" step="1" placeholder="例如 10" />
           </label>
           <div class="passed-filter-actions">
             <button id="passedApplyBtn" type="button">筛选</button>
@@ -119,6 +123,6 @@
 
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./nav.js?v=20260713-03" defer></script>
-    <script src="./passed.js?v=20260801-01" defer></script>
+    <script src="./passed.js?v=20260801-02" defer></script>
   </body>
 </html>
