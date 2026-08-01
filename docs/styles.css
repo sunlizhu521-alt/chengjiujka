@@ -1321,6 +1321,35 @@ small {
   color: #7c7ca3;
 }
 
+.table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.table-pagination button {
+  min-width: 84px;
+}
+
+.table-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.table-pagination span {
+  min-width: 88px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.applicant-summary-table th:nth-child(n + 3),
+.applicant-summary-table td:nth-child(n + 3) {
+  text-align: right;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;

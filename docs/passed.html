@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>成就卡榜单</title>
-    <link rel="stylesheet" href="./styles.css?v=20260801-01" />
+    <link rel="stylesheet" href="./styles.css?v=20260801-02" />
   </head>
   <body>
     <header class="topbar nav-only">
@@ -91,6 +91,35 @@
 
       <section class="panel summary-table-panel">
         <div class="summary-table-head">
+          <h2>人员汇总</h2>
+          <strong id="applicantSummaryCount" class="filter-count">0 人</strong>
+        </div>
+        <div class="table-wrap">
+          <table class="summary-table applicant-summary-table">
+            <thead>
+              <tr>
+                <th>申报人</th>
+                <th>人员状态</th>
+                <th>总成就卡数量</th>
+                <th>总分值</th>
+              </tr>
+            </thead>
+            <tbody id="applicantSummaryBody">
+              <tr>
+                <td colspan="4">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-pagination" aria-label="人员汇总分页">
+          <button id="applicantPrevPage" type="button" class="secondary-button">上一页</button>
+          <span id="applicantPageInfo">第 1 / 1 页</span>
+          <button id="applicantNextPage" type="button" class="secondary-button">下一页</button>
+        </div>
+      </section>
+
+      <section class="panel summary-table-panel">
+        <div class="summary-table-head">
           <h2>榜单明细</h2>
           <button id="passedExportBtn" type="button" class="secondary-button passed-export-button" disabled>
             导出筛选结果
@@ -118,11 +147,16 @@
             </tbody>
           </table>
         </div>
+        <div class="table-pagination" aria-label="榜单明细分页">
+          <button id="passedPrevPage" type="button" class="secondary-button">上一页</button>
+          <span id="passedPageInfo">第 1 / 1 页</span>
+          <button id="passedNextPage" type="button" class="secondary-button">下一页</button>
+        </div>
       </section>
     </main>
 
     <script src="./config.js?v=20260701-01" defer></script>
     <script src="./nav.js?v=20260713-03" defer></script>
-    <script src="./passed.js?v=20260801-02" defer></script>
+    <script src="./passed.js?v=20260801-03" defer></script>
   </body>
 </html>

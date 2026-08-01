@@ -17,11 +17,23 @@ const departmentCardChart = document.querySelector("#departmentCardChart");
 const applicantTopChart = document.querySelector("#applicantTopChart");
 const activeCardTotal = document.querySelector("#activeCardTotal");
 const departmentCardTotal = document.querySelector("#departmentCardTotal");
+const applicantSummaryBody = document.querySelector("#applicantSummaryBody");
+const applicantSummaryCount = document.querySelector("#applicantSummaryCount");
+const applicantPrevPage = document.querySelector("#applicantPrevPage");
+const applicantNextPage = document.querySelector("#applicantNextPage");
+const applicantPageInfo = document.querySelector("#applicantPageInfo");
+const passedPrevPage = document.querySelector("#passedPrevPage");
+const passedNextPage = document.querySelector("#passedNextPage");
+const passedPageInfo = document.querySelector("#passedPageInfo");
 const localTestApiBase = "http://localhost:3000";
 const configuredApiBase = (window.CHENGJIUKA_API_BASE || localTestApiBase).replace(/\/$/, "");
+const pageSize = 10;
 
 let passedRecords = [];
 let filteredPassedRecords = [];
+let filteredApplicantRows = [];
+let passedPage = 1;
+let applicantPage = 1;
 let activePassedFilters = {
   keyword: "",
   department: "",
@@ -135,12 +147,35 @@ function buildApplicantStats(records) {
   return records.reduce((stats, item) => {
     const applicantName = String(item.applicantName || "").trim();
     if (!applicantName) return stats;
-    const current = stats.get(applicantName) || { count: 0, score: 0 };
+    const current = stats.get(applicantName) || { count: 0, score: 0, employmentStatus: "" };
     current.count += 1;
     current.score += numericScore(item);
+    if (!current.employmentStatus) current.employmentStatus = item.employmentStatus || "已离职";
     stats.set(applicantName, current);
     return stats;
   }, new Map());
+}
+
+function buildApplicantSummary(records) {
+  return [...buildApplicantStats(records).entries()]
+    .map(([applicantName, stats]) => ({ applicantName, ...stats }))
+    .sort(
+      (a, b) =>
+        b.score - a.score || b.count - a.count || a.applicantName.localeCompare(b.applicantName, "zh-CN")
+    );
+}
+
+function pageSlice(records, requestedPage) {
+  const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
+  const page = Math.min(Math.max(1, requestedPage), totalPages);
+  const start = (page - 1) * pageSize;
+  return { page, totalPages, start, records: records.slice(start, start + pageSize) };
+}
+
+function updatePagination(previousButton, nextButton, pageInfo, page, totalPages, totalRecords) {
+  previousButton.disabled = page <= 1 || totalRecords === 0;
+  nextButton.disabled = page >= totalPages || totalRecords === 0;
+  pageInfo.textContent = `第 ${page} / ${totalPages} 页`;
 }
 
 function applyApplicantAggregateFilters(records) {
@@ -236,16 +271,20 @@ function renderCharts(records) {
 }
 
 function renderPassedTable(records) {
+  const paged = pageSlice(records, passedPage);
+  passedPage = paged.page;
+  updatePagination(passedPrevPage, passedNextPage, passedPageInfo, passedPage, paged.totalPages, records.length);
+
   if (!records.length) {
     passedTableBody.innerHTML = '<tr><td colspan="9">暂无记录。</td></tr>';
     return;
   }
 
-  passedTableBody.innerHTML = records
+  passedTableBody.innerHTML = paged.records
     .map(
       (item, index) => `
         <tr>
-          <td data-label="序号">${index + 1}</td>
+          <td data-label="序号">${paged.start + index + 1}</td>
           <td data-label="申报人姓名">${escapeHtml(item.applicantName || "")}</td>
           <td data-label="人员状态">
             <span class="employment-badge ${item.employmentStatus === "在职" ? "active" : "inactive"}">
@@ -264,7 +303,48 @@ function renderPassedTable(records) {
     .join("");
 }
 
-function renderPassedRecords() {
+function renderApplicantSummary(records) {
+  filteredApplicantRows = buildApplicantSummary(records);
+  applicantSummaryCount.textContent = `${filteredApplicantRows.length} 人`;
+  const paged = pageSlice(filteredApplicantRows, applicantPage);
+  applicantPage = paged.page;
+  updatePagination(
+    applicantPrevPage,
+    applicantNextPage,
+    applicantPageInfo,
+    applicantPage,
+    paged.totalPages,
+    filteredApplicantRows.length
+  );
+
+  if (!filteredApplicantRows.length) {
+    applicantSummaryBody.innerHTML = '<tr><td colspan="4">暂无记录。</td></tr>';
+    return;
+  }
+
+  applicantSummaryBody.innerHTML = paged.records
+    .map(
+      (item) => `
+        <tr>
+          <td data-label="申报人">${escapeHtml(item.applicantName)}</td>
+          <td data-label="人员状态">
+            <span class="employment-badge ${item.employmentStatus === "在职" ? "active" : "inactive"}">
+              ${escapeHtml(item.employmentStatus)}
+            </span>
+          </td>
+          <td data-label="总成就卡数量">${item.count}</td>
+          <td data-label="总分值">${item.score}分</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderPassedRecords(resetPages = false) {
+  if (resetPages) {
+    passedPage = 1;
+    applicantPage = 1;
+  }
   const baseFiltered = passedRecords.filter(matchesBaseFilters);
   const aggregateFiltered = applyApplicantAggregateFilters(baseFiltered);
   const filtered = applyTotalScoreRankFilter(aggregateFiltered);
@@ -272,6 +352,7 @@ function renderPassedRecords() {
   passedCount.textContent = `${filtered.length} 条`;
   passedExportBtn.disabled = filtered.length === 0;
   renderCharts(filtered);
+  renderApplicantSummary(filtered);
   renderPassedTable(filtered);
 }
 
@@ -343,7 +424,7 @@ async function loadPassedRecords() {
     passedRecords = [...active, ...expired];
     hydrateFilters();
     activePassedFilters = readPassedFilters();
-    renderPassedRecords();
+    renderPassedRecords(true);
     setPassedMessage("已更新", "success");
   } catch (error) {
     passedTableBody.innerHTML = '<tr><td colspan="9">加载失败。</td></tr>';
@@ -353,7 +434,7 @@ async function loadPassedRecords() {
 
 passedApplyBtn.addEventListener("click", () => {
   activePassedFilters = readPassedFilters();
-  renderPassedRecords();
+  renderPassedRecords(true);
 });
 
 passedResetBtn.addEventListener("click", () => {
@@ -366,9 +447,27 @@ passedResetBtn.addEventListener("click", () => {
   passedScoreMin.value = "";
   passedScoreRankTop.value = "";
   activePassedFilters = readPassedFilters();
-  renderPassedRecords();
+  renderPassedRecords(true);
 });
 
 passedExportBtn.addEventListener("click", exportFilteredRecords);
+passedPrevPage.addEventListener("click", () => {
+  if (passedPage <= 1) return;
+  passedPage -= 1;
+  renderPassedTable(filteredPassedRecords);
+});
+passedNextPage.addEventListener("click", () => {
+  passedPage += 1;
+  renderPassedTable(filteredPassedRecords);
+});
+applicantPrevPage.addEventListener("click", () => {
+  if (applicantPage <= 1) return;
+  applicantPage -= 1;
+  renderApplicantSummary(filteredPassedRecords);
+});
+applicantNextPage.addEventListener("click", () => {
+  applicantPage += 1;
+  renderApplicantSummary(filteredPassedRecords);
+});
 
 loadPassedRecords();
