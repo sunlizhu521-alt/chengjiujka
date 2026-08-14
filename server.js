@@ -2130,7 +2130,11 @@ app.patch("/api/card-config", requireAdmin, (req, res) => {
     return res.status(400).json({ message: "成就卡配置格式不正确。" });
   }
 
-  const normalized = writeCardDetails({ ...defaultCardDetails, ...cards });
+  if (Object.keys(cards).length === 0) {
+    return res.status(400).json({ message: "至少需要保留一张成就卡。" });
+  }
+
+  const normalized = writeCardDetails(cards);
   res.json({
     message: "成就卡配置已保存。",
     cards: normalized

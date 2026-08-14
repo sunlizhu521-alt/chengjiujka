@@ -2103,6 +2103,30 @@ small {
   resize: vertical;
 }
 
+.card-config-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+  background: #fff8f8;
+}
+
+.card-config-actions p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.card-config-actions .danger-button {
+  flex: 0 0 auto;
+}
+
+.card-config-actions .danger-button:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 .import-config-card {
   display: grid;
   gap: 14px;

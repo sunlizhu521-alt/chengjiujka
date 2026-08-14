@@ -370,6 +370,14 @@ function renderCardConfigEditor() {
               <textarea name="sources" rows="3">${escapeHtml(detail.sources || "")}</textarea>
             </label>
           </div>
+          <div class="card-config-actions">
+            <p>删除后申请页不再显示此卡，已有申请和评审记录仍会保留。</p>
+            <button
+              type="button"
+              class="danger-button delete-card-config-btn"
+              ${Object.keys(cardDetails).length <= 1 ? "disabled" : ""}
+            >删除成就卡</button>
+          </div>
         </details>
       `;
     })
@@ -394,6 +402,52 @@ function collectCardConfigEditor() {
   });
   return nextCards;
 }
+
+cardConfigEditor.addEventListener("click", async (event) => {
+  const deleteButton = event.target.closest(".delete-card-config-btn");
+  if (!deleteButton || !currentUser || currentUser.role !== "admin") return;
+
+  const cardEl = deleteButton.closest(".card-config-card");
+  const cardName = String(cardEl?.dataset.cardName || "").trim();
+  if (!cardName) return;
+
+  const nextCards = collectCardConfigEditor();
+  if (Object.keys(nextCards).length <= 1) {
+    setCardConfigMessage("至少需要保留一张成就卡，不能继续删除。", "error");
+    return;
+  }
+
+  if (
+    !window.confirm(
+      `确认删除「${cardName}」？\n\n删除后申请页不再显示此卡，但已有申请和评审记录会继续保留。`
+    )
+  ) {
+    return;
+  }
+
+  delete nextCards[cardName];
+  deleteButton.disabled = true;
+  setCardConfigMessage("", "");
+
+  try {
+    const response = await fetch(apiUrl("/api/card-config"), {
+      method: "PATCH",
+      headers: authHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ cards: nextCards })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "删除失败");
+
+    cardDetails = result.cards || nextCards;
+    renderCardConfigEditor();
+    applyAdminModule();
+    renderRecords();
+    setCardConfigMessage(`「${cardName}」已删除，历史申请和评审记录未受影响。`, "success");
+  } catch (error) {
+    deleteButton.disabled = false;
+    setCardConfigMessage(error.message, "error");
+  }
+});
 
 function renderPermissionPanel() {
   if (!isAdminUser()) {
