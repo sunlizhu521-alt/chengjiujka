@@ -1855,13 +1855,7 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
   const previousSecretRecord = records.find(
     (record) => record.applicantName === normalizedApplicantName && record.querySecretHash
   );
-  const duplicateRecord = records.find((record) => record.cardType === cardType && record.applicantName === normalizedApplicantName);
-
-  if (duplicateRecord) {
-    removeUploadedFiles(req.files);
-    return res.status(409).json({ message: `你已提交过「${cardType}」成就卡申请，请勿重复提交。` });
-  }
-
+  // 每次申请独立创建记录，不因同一人已有同一卡项的历史申请而拦截。
   const effectiveQuerySecretHash = applicantUser?.secretHash || previousSecretRecord?.querySecretHash || "";
   const effectiveQuerySecretPlain = previousSecretRecord?.querySecretPlain || "";
 
