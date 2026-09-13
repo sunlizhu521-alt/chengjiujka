@@ -1430,6 +1430,12 @@ function chinaDateOnly(now = new Date()) {
   return parseDateOnly(`${compact.slice(0, 4)}-${compact.slice(4, 6)}-${compact.slice(6, 8)}`);
 }
 
+function isCardWithinValidity(record, now = new Date()) {
+  const baseDate = parseDateOnly(record.reviewDate) || parseDateOnly(record.applicationDate);
+  if (!baseDate) return false;
+  return completedCalendarMonths(baseDate, chinaDateOnly(now)) <= validMonthsForRecord(record);
+}
+
 function scoreForCardType(cardType, explicitScore = "") {
   const recordScore = String(explicitScore ?? "").trim();
   if (recordScore) return recordScore;
@@ -1521,21 +1527,13 @@ function publicPassedRecord(record, validity, rosterByName = new Map()) {
 
 function groupPublicPassedRecords(records, now = new Date()) {
   const rosterByName = new Map(readRoster().employees.map((employee) => [employee.name, employee]));
-  const today = chinaDateOnly(now);
   return records.reduce(
     (groups, record) => {
       if (!record.resultPublished || record.reviewStatus !== "通过") {
         return groups;
       }
 
-      const baseDate = parseDateOnly(record.reviewDate) || parseDateOnly(record.applicationDate);
-      if (!baseDate) {
-        groups.expired.push(publicPassedRecord(record, "expired", rosterByName));
-        return groups;
-      }
-
-      const elapsedMonths = completedCalendarMonths(baseDate, today);
-      const targetGroup = elapsedMonths <= validMonthsForRecord(record) ? "active" : "expired";
+      const targetGroup = isCardWithinValidity(record, now) ? "active" : "expired";
       groups[targetGroup].push(publicPassedRecord(record, targetGroup, rosterByName));
       return groups;
     },
@@ -1855,11 +1853,21 @@ app.post("/api/submissions", upload.array("attachments", 10), (req, res) => {
   const previousSecretRecord = records.find(
     (record) => record.applicantName === normalizedApplicantName && record.querySecretHash
   );
-  // 每次申请独立创建记录，不因同一人已有同一卡项的历史申请而拦截。
+  const nowDate = new Date();
+  const activeApprovedRecord = records.find((record) =>
+    record.cardType === cardType &&
+    record.applicantName === normalizedApplicantName &&
+    record.reviewStatus === "通过" &&
+    isCardWithinValidity(record, nowDate)
+  );
+  if (activeApprovedRecord) {
+    removeUploadedFiles(req.files);
+    return res.status(409).json({ message: `你已获得「${cardType}」成就卡且仍在有效期内，请在过期后再次申请。` });
+  }
+
   const effectiveQuerySecretHash = applicantUser?.secretHash || previousSecretRecord?.querySecretHash || "";
   const effectiveQuerySecretPlain = previousSecretRecord?.querySecretPlain || "";
 
-  const nowDate = new Date();
   const now = nowDate.toISOString();
   const record = {
     id: createSubmissionId(records, nowDate),
