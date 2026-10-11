@@ -42,16 +42,17 @@ const histories = [
   feedbackFiles: [{ filename: `feedback-${index}.txt`, originalName: "评审附件.txt", size: 0 }]
 }));
 
-// 冻结测试服务时间，精确覆盖现有“完整月份 <= 有效月数”口径及北京时间边界。
+// 冻结测试服务时间，覆盖准确到期日、月末顺延及北京时间边界。
 const validitySpecs = [
-  ["一年边界仍有效", "2025-09-14", {}, true],
-  ["一年已过期", "2025-08-14", {}, false],
-  ["不足完整月份仍有效", "2025-08-15", {}, true],
-  ["季度边界仍有效", "2026-06-14", { cardType: "季度测试卡" }, true],
-  ["季度已过期", "2026-05-14", { cardType: "季度测试卡" }, false],
-  ["历史六个月有效", "2026-03-14", { legacySource: { validMonths: 6 } }, true],
-  ["历史六个月过期", "2026-02-14", { legacySource: { validMonths: 6 } }, false],
+  ["一年到期日仍有效", "2025-09-14", {}, true],
+  ["一年到期次日已过期", "2025-09-13", {}, false],
+  ["未满十三个完整月但已过准确到期日", "2025-08-15", {}, false],
+  ["季度到期日仍有效", "2026-06-14", { cardType: "季度测试卡" }, true],
+  ["季度到期次日已过期", "2026-06-13", { cardType: "季度测试卡" }, false],
+  ["历史六个月到期日仍有效", "2026-03-14", { legacySource: { validMonths: 6 } }, true],
+  ["历史六个月到期次日已过期", "2026-03-13", { legacySource: { validMonths: 6 } }, false],
   ["历史有效期优先", "2026-03-14", { cardType: "季度测试卡", legacySource: { validMonths: 6 } }, true],
+  ["小蜜蜂月末半年到期前仍有效", "2026-03-31", { cardType: "小蜜蜂" }, true],
   ["零月数回退一年", "2025-09-14", { legacySource: { validMonths: 0 } }, true],
   ["空月数回退一年", "2025-09-14", { legacySource: { validMonths: null } }, true],
   ["异常月数回退一年", "2025-09-14", { legacySource: { validMonths: "invalid" } }, true],
@@ -110,6 +111,7 @@ test("仅通过且有效的同一卡项禁止重复申请，历史、权限及�
   writeJson(path.join(dataDir, "card-config.json"), {
     [cardType]: { isOpen: true, definition: "重复申请回归测试", score: 10, cycle: "一年" },
     季度测试卡: { isOpen: true, definition: "季度回归测试", score: 10, cycle: "一季度" },
+    小蜜蜂: { isOpen: true, definition: "小蜜蜂固定半年回归测试", score: 10, cycle: "一年" },
     未开放测试卡: { isOpen: false, definition: "未开放" }
   });
   for (const record of seededHistories) {
@@ -304,15 +306,18 @@ test("仅通过且有效的同一卡项禁止重复申请，历史、权限及�
   });
 
   await t.test("北京时间跨过有效期边界后即可申请，原记录不被覆盖", async () => {
-    const history = boundaryHistories[2];
+    const history = boundaryHistories[0];
+    const smallBeeHistory = boundaryHistories.find((record) => record.cardType === "小蜜蜂");
     assert.equal((await submit(history.applicantName)).status, 409);
     await stop();
-    fs.writeFileSync(clockFile, `const OriginalDate = Date; const fixed = OriginalDate.parse("2026-09-14T16:30:00Z"); global.Date = class extends OriginalDate { constructor(...args) { super(...(args.length ? args : [fixed])); } static now() { return fixed; } };`);
+    fs.writeFileSync(clockFile, `const OriginalDate = Date; const fixed = OriginalDate.parse("2026-09-30T16:30:00Z"); global.Date = class extends OriginalDate { constructor(...args) { super(...(args.length ? args : [fixed])); } static now() { return fixed; } };`);
     await start();
     const groups = await (await fetch(`${base}/api/public/passed`)).json();
     assert.ok(groups.expired.some((record) => record.applicantName === history.applicantName));
+    assert.ok(groups.expired.some((record) => record.applicantName === smallBeeHistory.applicantName));
     const response = await submit(history.applicantName);
     assert.equal(response.status, 201);
+    assert.equal((await submit(smallBeeHistory.applicantName, { cardType: "小蜜蜂" })).status, 201);
     assert.deepEqual(stored().find((record) => record.id === history.id), history);
     assert.notEqual(response.body.id, history.id);
   });

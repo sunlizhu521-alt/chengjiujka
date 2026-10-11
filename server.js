@@ -1408,21 +1408,26 @@ function validMonthsForRecord(record) {
   const importedMonths = Number(record.legacySource?.validMonths);
   if (Number.isFinite(importedMonths) && importedMonths > 0) return importedMonths;
 
+  // Xiaomifeng is always valid for six months, regardless of the generic
+  // card-cycle configuration used by other cards.
+  if (record.cardType === "小蜜蜂") return 6;
+
   const configuredCycle = cardCycles[record.cardType];
   if (configuredCycle === "一季度") return 3;
   if (configuredCycle === "一年") return 12;
 
-  // The historical card dimension defines Xiaomifeng as 6 months and the
-  // remaining legacy cards as 12 months.
-  if (record.cardType === "小蜜蜂") return 6;
+  // The remaining legacy cards default to 12 months.
   return 12;
 }
 
-function completedCalendarMonths(startDate, endDate) {
-  let months = (endDate.getFullYear() - startDate.getFullYear()) * 12;
-  months += endDate.getMonth() - startDate.getMonth();
-  if (endDate.getDate() < startDate.getDate()) months -= 1;
-  return Math.max(0, months);
+function addCalendarMonthsClamped(date, months) {
+  const result = new Date(date.getTime());
+  const originalDay = result.getDate();
+  result.setDate(1);
+  result.setMonth(result.getMonth() + Math.trunc(months));
+  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(originalDay, lastDay));
+  return result;
 }
 
 function chinaDateOnly(now = new Date()) {
@@ -1433,7 +1438,8 @@ function chinaDateOnly(now = new Date()) {
 function isCardWithinValidity(record, now = new Date()) {
   const baseDate = parseDateOnly(record.reviewDate) || parseDateOnly(record.applicationDate);
   if (!baseDate) return false;
-  return completedCalendarMonths(baseDate, chinaDateOnly(now)) <= validMonthsForRecord(record);
+  const expiresAt = addCalendarMonthsClamped(baseDate, validMonthsForRecord(record));
+  return chinaDateOnly(now) <= expiresAt;
 }
 
 function scoreForCardType(cardType, explicitScore = "") {
